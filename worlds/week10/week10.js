@@ -25,6 +25,9 @@ const LEG_THICKNESS    = inchesToMeters(  2.5);
 const ROOM_SIZE        = 6;
 const PLAY_AREA        = 3;
 const CUBE_SIZE        = 0.2;
+const BALL_SIZE        = 0.02;
+const BALL_SPEED       = 3;
+const PAD_SIZE         = 0.3;
 
 let enableModeler = true;
 
@@ -129,6 +132,9 @@ async function onExit(state) {
    // de-initialize / close scene-specific resources here
    console.log("Goodbye! =)");
 }
+let isStart = false;
+let threshold = 0.04
+let isInit = false;
 
 async function setup(state) {
    hotReloadFile(getPath('week10.js'));
@@ -302,21 +308,24 @@ async function setup(state) {
    track of objects that need to be synchronized.
 
    ************************************************************************/
+   MR.objs.push(new Obj(CG.sphere));
 
-   //MR.objs.push(grabbableCube);
+
    //grabbableCube.position    = [0,0,-0.5].slice();
    //grabbableCube.orientation = [1,0,0,1].slice();
    //grabbableCube.uid = 0;
    //grabbableCube.lock = new Lock();
    //sendSpawnMessage(grabbableCube);
 }
-
-for(let i = 0;i<5;i++){
-   for(let j = 0;j<5;j++){
-      let brick = new Brick((i+j)%3);
-      brick.position = [0,j/2+1,-5+j/2];
-      brick.angle = i;
-      MR.bricks.push(brick);
+console.log(MR.bricks.length);
+if(MR.bricks.length==0){
+   for(let i = 0;i<5;i++){
+      for(let j = 0;j<5;j++){
+         let brick = new Brick((i+j)%3);
+         brick.position = [0,j/2+1,-5+j/2];
+         brick.angle = i;
+         MR.bricks.push(brick);
+      }
    }
 }
 
@@ -435,13 +444,13 @@ function onStartFrame(t, state) {
 
    -----------------------------------------------------------------*/
    if (enableModeler && input.LC) {
-      if (input.RC.isDown()) {
+      /*if (input.RC.isDown()) {
          menuChoice = findInMenu(input.RC.position(), input.LC.tip());
          if (menuChoice >= 0 && input.LC.press()) {
             state.isNewObj = true;
                let newObject = new Obj(menuShape[menuChoice]);
                /*Should you want to support grabbing, refer to the
-               above example in setup()*/ 
+               above example in setup()*
             MR.objs.push(newObject);
                sendSpawnMessage(newObject);
          }
@@ -454,7 +463,33 @@ function onStartFrame(t, state) {
          obj.lock = new Lock();
       }
       if (input.LC.release())
-         state.isNewObj = false;
+         state.isNewObj = false;*/
+         if (input.RC.press()){
+            isInit = true;
+         }
+         if(isInit==true && isStart==false && input.RC.release()){
+            let obj = MR.objs[0];
+            let pos = input.RC.tip().slice();
+            obj.position = pos;
+            obj.releasePosition = pos;
+            obj.orientation = input.RC.orientation().slice();
+            m.save();
+               m.identity();
+               m.rotateQ(input.RC.orientation());
+               let t = m.value();
+               obj.velocity = vectorMulti(neg(normalize(getOriZ(t))), BALL_SPEED);
+            m.restore();
+            
+            obj.scale = [BALL_SIZE, BALL_SIZE, BALL_SIZE];
+            obj.flag = true;
+            obj.touch = false;
+            obj.StartTime = state.time;
+            //obj.velocity = RC.Velocity();
+            //console.log("objvelocity:", obj.velocity);
+            isStart=true;
+            isInit=false;
+         }
+
    }
 
    if (input.LC) {
@@ -704,7 +739,39 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       m.restore();
    }
 
-   let drawController = (C, hand) => {
+   let drawController = (C, hand, color) => {
+      let P = C.position(), s = C.isDown() ? .0125 : .0225;
+      m.save();
+         m.multiply(state.avatarMatrixForward);
+         m.translate(P[0], P[1], P[2]);
+         m.rotateQ(C.orientation());
+           m.save();
+              m.translate(0,0,0.01);
+              m.scale(PAD_SIZE,PAD_SIZE,0.005);
+              drawShape(CG.cylinder, color);
+           m.restore();
+           m.save();
+              m.translate(0,0,.025);
+              m.scale(.015,.015,.01);
+              drawShape(CG.cube, [0,0,0]);
+           m.restore();
+           m.save();
+              m.translate(0,0,.035);
+              m.rotateX(.5);
+                 m.save();
+                    m.translate(0,-.001,.035);
+                    m.scale(.014,.014,.042);
+                    drawShape(CG.cylinder, [0,0,0]);
+                 m.restore();
+                 m.save();
+                    m.translate(0,-.001,.077);
+                    m.scale(.014,.014,.014);
+                    drawShape(CG.sphere, [0,0,0]);
+                 m.restore();
+           m.restore();
+      m.restore();
+   }
+   /*let drawController = (C, hand) => {
       let P = C.position();
       m.save();
          m.multiply(state.avatarMatrixForward);
@@ -733,7 +800,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
             drawShape(CG.sphere, [0,0,0]);
          m.restore();
       m.restore();
-   }
+   }*/
 
    let drawSyncController = (pos, rot, color) => {
       let P = pos;
@@ -775,13 +842,153 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       m.rotateY(-state.turnAngle);
       m.rotateX(-state.tiltAngle);
 
-      drawController(input.LC, 0);
-      drawController(input.RC, 1);
+      drawController(input.LC, 0,[1,0,0]);
+      drawController(input.RC, 1, [0,0,1]);
       if (enableModeler && input.RC.isDown())
          showMenu(input.RC.position());
       m.restore();
    }
 
+   let isTouch = (ball, C) => {
+      let ballPos = ball.position;
+      let conPos = C.position();
+      let dz = Math.abs(ballPos[2]-conPos[2]);
+      if (dz>threshold){
+         return false;
+      }
+      else{
+         let dx = ballPos[0]-conPos[0];
+         let dy = ballPos[1]-conPos[1];
+         if (dx*dx+dy*dy>PAD_SIZE*PAD_SIZE){
+            return false;
+         }
+         else{
+            return true;
+         }
+      }
+
+   }
+
+   let hitBrick = (ballPos)=>{
+      for(let i = 0;i<MR.bricks.length;i++){
+         let b_x = Math.sin((MR.bricks[i].angle+state.time)/2)*MR.bricks[i].position[2];
+         let b_y = MR.bricks[i].position[1];
+         let b_z = Math.cos((MR.bricks[i].angle+state.time)/2)*MR.bricks[i].position[2];
+         let x = ballPos[0]-b_x;
+         let y = ballPos[1]-b_y;
+         let z = ballPos[2]-b_z;
+         if(Math.abs(x)<=CUBE_SIZE&& Math.abs(y)<=CUBE_SIZE&& Math.abs(z)<=CUBE_SIZE){
+            let maxVal = Math.max(Math.abs(x),Math.max(Math.abs(y),Math.abs(z)));
+            let norm = [];
+            if(maxVal == x){
+               norm = normalize([-b_z,0,b_x]);
+            }else if(maxVal == -x){
+               norm = normalize([b_z,0,-b_x]);
+            }else if(maxVal == y){
+               norm = [0,1,0];
+            }else if(maxVal == -y){
+               norm = [0,-1,0];
+            }else if(maxVal == z){
+               norm = normalize([-b_x,0,-b_z]);
+            }else if(maxVal == -z){
+               norm = normalize([b_x,0,b_z]);
+            }             
+            return [i,norm];
+         }
+      }
+      return [-1,[]];
+   }
+
+   if (isStart == false&& input.LC){
+      let ball = MR.objs[0];
+      let P = input.RC.position();
+      m.save();
+          m.identity();
+          m.translate(P[0], P[1], P[2]);
+          m.rotateQ(input.RC.orientation());
+          m.translate(0,0,-.03);
+          m.translate(0,0,0.025);
+          m.scale(BALL_SIZE, BALL_SIZE, BALL_SIZE);
+          drawShape(ball.shape, [1,1,1]);
+      m.restore();
+      
+   }
+   else if(isStart){
+      for (let n = 0 ; n < MR.objs.length ; n++) {
+         
+         let ball = MR.objs[n], P = ball.position, RP = ball.releasePosition;
+  
+         m.save();
+           if (ball.velocity){
+           // update ball position with time and velocity
+              m.translate(RP[0], RP[1], RP[2]);
+              let time = state.time - ball.StartTime;
+              ball.position = [RP[0]+ball.velocity[0] * time, RP[1]+ball.velocity[1] * time, RP[2]+ball.velocity[2] * time];
+              m.translate(ball.velocity[0] * time, ball.velocity[1] * time, ball.velocity[2] * time);
+  
+              // if the ball hits the boundary of the sphere scene
+              if (norm(ball.position)> ROOM_SIZE-0.01 && ball.flag){
+                 let N = normalize(neg(ball.position));
+                 let v = norm(ball.velocity);
+                 let I = normalize(neg(ball.velocity));
+                 let w = 2.*dot(I, N);
+                 ball.StartTime=state.time;
+                 ball.releasePosition = ball.position.slice();
+                 ball.velocity = [v*(w*N[0]-I[0]), v*(w*N[1]-I[1]), v*(w*N[2]-I[2])];
+                 ball.flag = false;
+              }
+              else if (norm(ball.position)<ROOM_SIZE-0.01){
+                 ball.flag = true;
+              }
+  
+              // if the ball hits the pad
+              if (ball.touch && isTouch(ball, input.RC)){
+                 let N;
+                 m.save();
+                    m.identity();
+                    m.rotateQ(input.RC.orientation());
+                    let t = m.value();
+                    N = neg(normalize(getOriZ(t)));
+                 m.restore();
+           
+                 let v = norm(ball.velocity);
+                 let I = normalize(neg(ball.velocity));
+                 let w = 2.*dot(I, N);
+                 ball.StartTime=state.time;
+                 ball.releasePosition = ball.position.slice();
+                 ball.velocity = [v*(w*N[0]-I[0]), v*(w*N[1]-I[1]), v*(w*N[2]-I[2])];
+                 ball.touch = false;
+                 console.log("touch!");
+              }
+              else if(Math.abs(ball.position[2]-input.RC.position()[2])>threshold){
+                 ball.touch = true;
+              }
+  
+              // if the ball hits the bricks
+              let brickP = hitBrick(ball.position);
+              if(brickP[0]!=-1){     
+                 let N = brickP[1];
+                 let v = norm(ball.velocity);
+                 let I = normalize(neg(ball.velocity));
+                 let w = 2.*dot(I, N);
+                 ball.StartTime=state.time;
+                 ball.releasePosition = ball.position.slice();
+                 ball.velocity = [v*(w*N[0]-I[0]), v*(w*N[1]-I[1]), v*(w*N[2]-I[2])];
+                 MR.bricks.splice(brickP[0],1);
+              }
+           }
+           
+           else {
+              m.translate(P[0], P[1], P[2]);
+           }
+       
+           //draw the ball
+            m.rotateQ(ball.orientation);
+            m.scale(...ball.scale);
+            drawShape(ball.shape, [1,1,1]);
+         m.restore();
+      }
+     }
 
     /*-----------------------------------------------------------------
 
@@ -807,7 +1014,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
          drawCube(m,MR.bricks[n].color);
        m.restore();
       }
-   for (let n = 0 ; n < MR.objs.length ; n++) {
+   /*for (let n = 0 ; n < MR.objs.length ; n++) {
       let obj = MR.objs[n], P = obj.position;
       m.save();
          m.multiply(state.avatarMatrixForward);
@@ -817,7 +1024,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
          drawShape(obj.shape, [1,1,1]);
          
       m.restore();
-   }
+   }*/
 
    m.translate(0, -EYE_HEIGHT, 0);
  
@@ -1055,7 +1262,7 @@ function pollGrab(state) {
          //ALEX: Check if grabbable.
          let isGrabbed = checkIntersection(controller.position(), MR.objs[i].shape);
          //requestLock(MR.objs[i].uid);
-         if (isGrabbed == true) {
+         /*if (isGrabbed == true) {
             if (MR.objs[i].lock.locked) {
                MR.objs[i].position = controller.position();
                const response =
@@ -1074,7 +1281,7 @@ function pollGrab(state) {
             } else {
                MR.objs[i].lock.request(MR.objs[i].uid);
             }
-         }
+         }*/
       }
    }
 }
@@ -1083,10 +1290,10 @@ function releaseLocks(state) {
    let input = state.input;
    if ((input.LC && !input.LC.isDown()) && (input.RC && !input.RC.isDown())) {
       for (let i = 0; i < MR.objs.length; i++) {
-         if (MR.objs[i].lock.locked == true) {
+         /*if (MR.objs[i].lock.locked == true) {
             MR.objs[i].lock.locked = false;
             MR.objs[i].lock.release(MR.objs[i].uid);
-         }
+         }*/
       }
    }
 }
