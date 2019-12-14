@@ -181,7 +181,7 @@ MR.syncClient.eventBus.subscribe("spawn", (json) => {
     const success = json["success"];
 
     if (success) {
-        console.log("object created ", json);
+       // console.log("object created ", json);
         // add to MR.objs
     } else {
         console.log("failed spawn message", json);
@@ -201,6 +201,26 @@ MR.syncClient.eventBus.subscribe("object", (json) => {
     }
     else{
       console.log("failed object message", json);
+    }
+});
+MR.syncClient.eventBus.subscribe("brick", (json) => {
+    console.log("brick moved!!!!!!");
+    const success = json["success"];
+     if (success) {
+      console.log("brick moved: ", json);
+      // update update metadata for next frame's rendering
+      let current = MR.objs[json["uid"]];
+      console.log(json);
+      if(json["state"]["action"] == "delete"){
+        MR.bricks[json["state"]["index"]].exist = false;
+      }else if(json["state"]["action"] == "add"){
+        MR.bricks[json["state"]["index"]].exist = true;
+      }
+
+    //current.orientation = MR.objs[json["state"]["orientation"]];
+    }
+    else{
+      console.log("failed brick message", json);
     }
 });
 

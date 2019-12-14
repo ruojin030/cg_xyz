@@ -264,19 +264,8 @@ MR.avatars = {};
 MR.playerid = -1;
 MR.playerType = MR.UserType.browser;
 
-function Brick(color) {
-    this.color = color;
- };
 MR.objs = [];
-MR.bricks = [];
-for(let i = 0;i<5;i++){
-    for(let j = 0;j<5;j++){
-       let brick = new Brick((i+j)%3);
-       brick.position = [0,j/2+1,-5+j/2];
-       brick.angle = i;
-       MR.bricks.push(brick);
-    }
- }
+MR.bricks =[];
 window.onbeforeunload = function() {
     websocket.onclose = function () {}; // disable onclose handler first
     websocket.close();

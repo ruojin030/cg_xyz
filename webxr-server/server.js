@@ -105,10 +105,10 @@ let timers = {};
 let avatars = {};
 
 setInterval(() => {
-    console.log("current connections:");
-    console.log(Array.from(websocketMap.keys() ));
-    console.log("avatars: ");
-    console.log(avatars);
+    //console.log("current connections:");
+    //console.log(Array.from(websocketMap.keys() ));
+    //console.log("avatars: ");
+    //console.log(avatars);
 }, 5000);
 // avatar state:
 // user:
@@ -290,7 +290,6 @@ try {
                 // console.log(err);
                 return;
             }
-
             if (json["type"] == "object") {
 
                 const key = json["uid"];
@@ -323,7 +322,25 @@ try {
                     console.log("object in use.");
                 }
 
-            } else if(json["type"] == "spawn") {
+            } else if(json["type"] == "brick"){
+                const key = json["uid"];
+                const state = json["state"];
+
+                    // console.log(datastore.state);
+
+                    // tell everyone else about this update
+                    const response = {
+                        "type": "brick",
+                        "uid": key,
+                        "state": state,
+                        "success": true
+                    };
+
+                    send("*", -1, response);
+
+
+            }
+             else if(json["type"] == "spawn") {
                 // This depends on the spawn logic we want to add.
                 const key = json["uid"];
                 const lockid = json["lockid"];
@@ -364,7 +381,6 @@ try {
                         "uid": key,
                         "success": true
                     };
-
                     send("*", -1, response);
                 } else {
                     // if false only send to requester
@@ -373,7 +389,7 @@ try {
                         "uid": key,
                         "success": false
                     };
-
+                    console.log("delete fail");
                     send(ws.index, -1, response);
                 }
 

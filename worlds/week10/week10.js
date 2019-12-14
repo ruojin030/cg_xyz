@@ -308,26 +308,44 @@ async function setup(state) {
    track of objects that need to be synchronized.
 
    ************************************************************************/
+   /*let grabbableCube = new Obj(CG.sphere);
+   MR.objs.push(grabbableCube);
+   grabbableCube.position    = [0,0,-0.5].slice();
+   grabbableCube.orientation = [1,0,0,1].slice();
+   grabbableCube.uid = 0;
+   grabbableCube.lock = new Lock();
+   sendSpawnMessage(grabbableCube);
+   console.log("######"+MR.bricks.length);*/
    MR.objs.push(new Obj(CG.sphere));
 
-
-   //grabbableCube.position    = [0,0,-0.5].slice();
-   //grabbableCube.orientation = [1,0,0,1].slice();
-   //grabbableCube.uid = 0;
-   //grabbableCube.lock = new Lock();
-   //sendSpawnMessage(grabbableCube);
-}
-console.log(MR.bricks.length);
-if(MR.bricks.length==0){
-   for(let i = 0;i<5;i++){
-      for(let j = 0;j<5;j++){
-         let brick = new Brick((i+j)%3);
-         brick.position = [0,j/2+1,-5+j/2];
-         brick.angle = i;
-         MR.bricks.push(brick);
-      }
+   if(MR.bricks.length==0){
+      let brick = new Brick(1);
+      brick.exist = true;
+      brick.position = [0,0,-0.5];
+      brick.angle = 0;
+      brick.uid = -1;
+      brick.lock = new Lock();
+      MR.bricks.push(brick);
+      sendSpawnMessage(brick);
+      //
+      console.log("#####Restart!");
+      for(let i = 0;i<15;i++){
+         for(let j = 0;j<5;j++){
+            let brick = new Brick((i+j)%3);
+            brick.color
+            brick.position = [0,j/2+1,-5+j/2].slice();
+            brick.angle = i;
+            brick.exist = true;
+            brick.uid = i*j+j+1;
+            //console.log(brick.uid);
+            brick.lock = new Lock();
+            MR.bricks.push(brick);
+            sendSpawnMessage(brick);
+         }
+      }   
    }
 }
+
 
 /************************************************************************
 
@@ -343,7 +361,10 @@ function sendSpawnMessage(object){
          lockid: -1,
          state: {
             position: object.position,
-            orientation: object.orientation,
+            angle: object.angle,
+
+            
+            //orientation: object.orientation,
          }
       };
 
@@ -805,6 +826,34 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
    let drawSyncController = (pos, rot, color) => {
       let P = pos;
       m.save();
+         m.translate(P[0], P[1], P[2]);
+         m.rotateQ(rot);
+           m.save();
+              m.translate(0,0,0.01);
+              m.scale(PAD_SIZE,PAD_SIZE,0.005);
+              drawShape(CG.cylinder, color);
+           m.restore();
+           m.save();
+              m.translate(0,0,.025);
+              m.scale(.015,.015,.01);
+              drawShape(CG.cube, [0,0,0]);
+           m.restore();
+           m.save();
+              m.translate(0,0,.035);
+              m.rotateX(.5);
+                 m.save();
+                    m.translate(0,-.001,.035);
+                    m.scale(.014,.014,.042);
+                    drawShape(CG.cylinder, [0,0,0]);
+                 m.restore();
+                 m.save();
+                    m.translate(0,-.001,.077);
+                    m.scale(.014,.014,.014);
+                    drawShape(CG.sphere, [0,0,0]);
+                 m.restore();
+           m.restore();
+      m.restore();
+      /*m.save();
       // m.identity();
          m.translate(P[0], P[1], P[2]);
          m.rotateQ(rot);
@@ -829,7 +878,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
                m.translate(0,-.01,.067).scale(.012,.02,.023);
                drawShape(CG.sphere, [0,0,0]);
          m.restore();
-      m.restore();
+      m.restore();*/
    }
 
    if (input.LC) {
@@ -845,7 +894,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       drawController(input.LC, 0,[1,0,0]);
       drawController(input.RC, 1, [0,0,1]);
       if (enableModeler && input.RC.isDown())
-         showMenu(input.RC.position());
+         //showMenu(input.RC.position());
       m.restore();
    }
 
@@ -871,30 +920,32 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
 
    let hitBrick = (ballPos)=>{
       for(let i = 0;i<MR.bricks.length;i++){
-         let b_x = Math.sin((MR.bricks[i].angle+state.time)/2)*MR.bricks[i].position[2];
-         let b_y = MR.bricks[i].position[1];
-         let b_z = Math.cos((MR.bricks[i].angle+state.time)/2)*MR.bricks[i].position[2];
-         let x = ballPos[0]-b_x;
-         let y = ballPos[1]-b_y;
-         let z = ballPos[2]-b_z;
-         if(Math.abs(x)<=CUBE_SIZE&& Math.abs(y)<=CUBE_SIZE&& Math.abs(z)<=CUBE_SIZE){
-            let maxVal = Math.max(Math.abs(x),Math.max(Math.abs(y),Math.abs(z)));
-            let norm = [];
-            if(maxVal == x){
-               norm = normalize([-b_z,0,b_x]);
-            }else if(maxVal == -x){
-               norm = normalize([b_z,0,-b_x]);
-            }else if(maxVal == y){
-               norm = [0,1,0];
-            }else if(maxVal == -y){
-               norm = [0,-1,0];
-            }else if(maxVal == z){
-               norm = normalize([-b_x,0,-b_z]);
-            }else if(maxVal == -z){
-               norm = normalize([b_x,0,b_z]);
-            }             
-            return [i,norm];
-         }
+         if(MR.bricks[i].exist){
+            let b_x = Math.sin((MR.bricks[i].angle+state.time)/2)*MR.bricks[i].position[2];
+            let b_y = MR.bricks[i].position[1];
+            let b_z = Math.cos((MR.bricks[i].angle+state.time)/2)*MR.bricks[i].position[2];
+            let x = ballPos[0]-b_x;
+            let y = ballPos[1]-b_y;
+            let z = ballPos[2]-b_z;
+            if(Math.abs(x)<=CUBE_SIZE&& Math.abs(y)<=CUBE_SIZE&& Math.abs(z)<=CUBE_SIZE){
+               let maxVal = Math.max(Math.abs(x),Math.max(Math.abs(y),Math.abs(z)));
+               let norm = [];
+               if(maxVal == x){
+                  norm = normalize([-b_z,0,b_x]);
+               }else if(maxVal == -x){
+                  norm = normalize([b_z,0,-b_x]);
+               }else if(maxVal == y){
+                  norm = [0,1,0];
+               }else if(maxVal == -y){
+                  norm = [0,-1,0];
+               }else if(maxVal == z){
+                  norm = normalize([-b_x,0,-b_z]);
+               }else if(maxVal == -z){
+                  norm = normalize([b_x,0,b_z]);
+               }             
+               return [i,norm];
+            }
+         }  
       }
       return [-1,[]];
    }
@@ -967,6 +1018,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
               // if the ball hits the bricks
               let brickP = hitBrick(ball.position);
               if(brickP[0]!=-1){     
+                 console.log("hit "+brickP[0]);
                  let N = brickP[1];
                  let v = norm(ball.velocity);
                  let I = normalize(neg(ball.velocity));
@@ -974,7 +1026,16 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
                  ball.StartTime=state.time;
                  ball.releasePosition = ball.position.slice();
                  ball.velocity = [v*(w*N[0]-I[0]), v*(w*N[1]-I[1]), v*(w*N[2]-I[2])];
-                 MR.bricks.splice(brickP[0],1);
+                  const response = 
+                     {
+                        type: "brick",
+                        uid: MR.bricks[brickP[0]].uid,
+                        state: {action:"delete",
+                                 index: brickP[0]},
+                     };
+               
+                 MR.syncClient.send(response);
+                 //MR.bricks.splice(brickP[0],1);
               }
            }
            
@@ -1007,12 +1068,14 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       m.restore();
     }
     for( let n  = 0; n < MR.bricks.length ; n++){
-       let pos = MR.bricks[n].position;
-       m.save();
-         m.rotateY((MR.bricks[n].angle+state.time)/2);
-         m.translate(pos[0],pos[1],pos[2]);
-         drawCube(m,MR.bricks[n].color);
-       m.restore();
+       if(MR.bricks[n].exist){
+         let pos = MR.bricks[n].position;
+         m.save();
+            m.rotateY((MR.bricks[n].angle+state.time)/2);
+            m.translate(pos[0],pos[1],pos[2]);
+            drawCube(m,MR.bricks[n].color);
+         m.restore();
+       }
       }
    /*for (let n = 0 ; n < MR.objs.length ; n++) {
       let obj = MR.objs[n], P = obj.position;
