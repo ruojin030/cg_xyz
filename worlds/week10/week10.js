@@ -325,8 +325,8 @@ async function setup(state) {
       brick.angle = 0;
       brick.uid = -1;
       brick.lock = new Lock();
-      MR.bricks.push(brick);
-      sendSpawnMessage(brick);
+      //MR.bricks.push(brick);
+      //sendSpawnMessage(brick);
       //
       console.log("#####Restart!");
       for(let i = 0;i<15;i++){
@@ -339,8 +339,8 @@ async function setup(state) {
             brick.uid = i*j+j+1;
             //console.log(brick.uid);
             brick.lock = new Lock();
-            MR.bricks.push(brick);
-            sendSpawnMessage(brick);
+            //MR.bricks.push(brick);
+            //sendSpawnMessage(brick);
          }
       }   
    }
@@ -403,7 +403,7 @@ function onStartFrame(t, state) {
       if (! state.calibrate) {
          m.identity();
          m.rotateY(Math.PI/2);
-         m.translate(-2.01,.04,0);
+         //m.translate(-2.01,.04,0);
          state.calibrate = m.value().slice();
       }
    }
@@ -503,7 +503,10 @@ function onStartFrame(t, state) {
             
             obj.scale = [BALL_SIZE, BALL_SIZE, BALL_SIZE];
             obj.flag = true;
+            obj.flag1 = true;
+            obj.flag2 = true;
             obj.touch = false;
+            obj.color = [1,1,1];
             obj.StartTime = state.time;
             //obj.velocity = RC.Velocity();
             //console.log("objvelocity:", obj.velocity);
@@ -538,7 +541,7 @@ function onStartFrame(t, state) {
                m.identity();
                m.translate(CG.mix(LP, RP, .5));
                m.rotateY(Math.atan2(D[0], D[2]) + Math.PI/2);
-               m.translate(-2.35,1.00,-.72);
+               //m.translate(-2.35,0-.72);
                state.avatarMatrixForward = CG.matrixInverse(m.value());
                state.avatarMatrixInverse = m.value();
             m.restore();
@@ -610,6 +613,7 @@ function onDraw(t, projMat, viewMat, state, eyeIdx) {
    m.rotateX(state.tiltAngle);
    m.rotateY(state.turnAngle);
    let P = state.position;
+   //console.log(state.position);
    m.translate(P[0],P[1],P[2]);
 
    m.save();
@@ -792,36 +796,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
            m.restore();
       m.restore();
    }
-   /*let drawController = (C, hand) => {
-      let P = C.position();
-      m.save();
-         m.multiply(state.avatarMatrixForward);
-         m.translate(P[0],P[1],P[2]);
-         m.rotateQ(C.orientation());
-         m.translate(0,.02,-.005);
-         m.rotateX(.75);
-         m.save();
-            m.translate(0,0,-.0095).scale(.004,.004,.003);
-            drawShape(CG.sphere, C.isDown() ? [10,0,0] : [.5,0,0]);
-         m.restore();
-         m.save();
-            m.translate(0,0,-.01).scale(.04,.04,.13);
-            drawShape(CG.torus1, [0,0,0]);
-         m.restore();
-         m.save();
-            m.translate(0,-.0135,-.008).scale(.04,.0235,.0015);
-            drawShape(CG.cylinder, [0,0,0]);
-         m.restore();
-         m.save();
-            m.translate(0,-.01,.03).scale(.012,.02,.037);
-            drawShape(CG.cylinder, [0,0,0]);
-         m.restore();
-         m.save();
-            m.translate(0,-.01,.067).scale(.012,.02,.023);
-            drawShape(CG.sphere, [0,0,0]);
-         m.restore();
-      m.restore();
-   }*/
+
 
    let drawSyncController = (pos, rot, color) => {
       let P = pos;
@@ -853,32 +828,6 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
                  m.restore();
            m.restore();
       m.restore();
-      /*m.save();
-      // m.identity();
-         m.translate(P[0], P[1], P[2]);
-         m.rotateQ(rot);
-         m.translate(0,.02,-.005);
-         m.rotateX(.75);
-         m.save();
-               m.translate(0,0,-.0095).scale(.004,.004,.003);
-         m.restore();
-         m.save();
-               m.translate(0,0,-.01).scale(.04,.04,.13);
-               drawShape(CG.torus1, [0,0,0]);
-         m.restore();
-         m.save();
-               m.translate(0,-.0135,-.008).scale(.04,.0235,.0015);
-               drawShape(CG.cylinder, [0,0,0]);
-         m.restore();
-         m.save();
-               m.translate(0,-.01,.03).scale(.012,.02,.037);
-               drawShape(CG.cylinder, [0,0,0]);
-         m.restore();
-         m.save();
-               m.translate(0,-.01,.067).scale(.012,.02,.023);
-               drawShape(CG.sphere, [0,0,0]);
-         m.restore();
-      m.restore();*/
    }
 
    if (input.LC) {
@@ -921,9 +870,9 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
    let hitBrick = (ballPos)=>{
       for(let i = 0;i<MR.bricks.length;i++){
          if(MR.bricks[i].exist){
-            let b_x = Math.sin((MR.bricks[i].angle+state.time)/2)*MR.bricks[i].position[2];
+            let b_x = Math.sin((MR.bricks[i].angle)/2)*MR.bricks[i].position[2];
             let b_y = MR.bricks[i].position[1];
-            let b_z = Math.cos((MR.bricks[i].angle+state.time)/2)*MR.bricks[i].position[2];
+            let b_z = Math.cos((MR.bricks[i].angle)/2)*MR.bricks[i].position[2];
             let x = ballPos[0]-b_x;
             let y = ballPos[1]-b_y;
             let z = ballPos[2]-b_z;
@@ -950,6 +899,31 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       return [-1,[]];
    }
 
+   /*我把你的code搞在了一起 你看看你手柄反弹能不能也用这个
+      To LIN
+   */
+
+   let changeVelocity = (ball,N)=>{
+      let v = norm(ball.velocity);
+      let I = normalize(neg(ball.velocity));
+      let w = 2.*dot(I, N);
+      ball.StartTime=state.time;
+      ball.releasePosition = ball.position.slice();
+      ball.velocity = [v*(w*N[0]-I[0]), v*(w*N[1]-I[1]), v*(w*N[2]-I[2])];
+   }
+
+   /*TO LIN: still wrong plz fix it */
+   let checkInsideBound = (position)=>{
+      if(Math.abs(position[0])==BALL_SIZE&&position[2]>=0){
+         return true;
+      }else if(position[0]>=0&& position[2]<=0){
+         return Math.abs(position[2]/position[0]+Math.sqrt(3))<=0.01;
+      }else if(position[0]<=0&& position[2]<=0){
+         return Math.abs(position[2]/position[0]-Math.sqrt(3))<=0.01;
+      }
+
+   }
+
    if (isStart == false&& input.LC){
       let ball = MR.objs[0];
       let P = input.RC.position();
@@ -966,11 +940,12 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
    }
    else if(isStart){
       for (let n = 0 ; n < MR.objs.length ; n++) {
-         
-         let ball = MR.objs[n], P = ball.position, RP = ball.releasePosition;
-  
+         let ball = MR.objs[n], P = ball.position.slice(), RP = ball.releasePosition.slice();
+         console.log(ball.position);
+         P[1] = P[1]+EYE_HEIGHT;
          m.save();
            if (ball.velocity){
+              //console.log(ball.velocity);
            // update ball position with time and velocity
               m.translate(RP[0], RP[1], RP[2]);
               let time = state.time - ball.StartTime;
@@ -978,19 +953,43 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
               m.translate(ball.velocity[0] * time, ball.velocity[1] * time, ball.velocity[2] * time);
   
               // if the ball hits the boundary of the sphere scene
-              if (norm(ball.position)> ROOM_SIZE-0.01 && ball.flag){
-                 let N = normalize(neg(ball.position));
-                 let v = norm(ball.velocity);
-                 let I = normalize(neg(ball.velocity));
-                 let w = 2.*dot(I, N);
-                 ball.StartTime=state.time;
-                 ball.releasePosition = ball.position.slice();
-                 ball.velocity = [v*(w*N[0]-I[0]), v*(w*N[1]-I[1]), v*(w*N[2]-I[2])];
-                 ball.flag = false;
+              if (norm(P)> ROOM_SIZE-BALL_SIZE ){
+                  if(ball.flag){
+                     //console.log(ball.velocity);
+                     console.log("bounding")
+                     /*let N = normalize(neg(ball.position));
+                     let v = norm(ball.velocity);
+                     let I = normalize(neg(ball.velocity));
+                     let w = 2.*dot(I, N);
+                     ball.StartTime=state.time;
+                     ball.releasePosition = ball.position.slice();
+                     ball.velocity = [v*(w*N[0]-I[0]), v*(w*N[1]-I[1]), v*(w*N[2]-I[2])];
+                     ball.flag = false;*/
+                     changeVelocity(ball,normalize(neg(ball.position)));
+                     ball.flag = false;
+                  }else{
+                     console.log(ball.velocity);
+                  }
               }
-              else if (norm(ball.position)<ROOM_SIZE-0.01){
+              else if (norm(P)<ROOM_SIZE-0.01){
                  ball.flag = true;
               }
+              if(P[1] <BALL_SIZE/2 &&ball.flag1){
+                  ball.flag1 = false;
+                 console.log(P[1]);
+                 console.log("size Change");                
+                 changeVelocity(ball,[0,1,0]);
+              }else if(P[1] >=BALL_SIZE/2&&!ball.flag1){
+                 console.log("change flag1")
+                 ball.flag1 = true;
+              }
+              /*still have error to fixED to LIN*/
+              if(checkInsideBound(ball.position)&&ball.flag2){
+                     changeVelocity(ball);
+                     ball.flag2 = false;
+               }else if(!ball.flag2&&checkInsideBound(P)){
+                     ball.flag2 = true;
+               }
   
               // if the ball hits the pad
               if (ball.touch && isTouch(ball, input.RC)){
@@ -1017,15 +1016,10 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
   
               // if the ball hits the bricks
               let brickP = hitBrick(ball.position);
+              
               if(brickP[0]!=-1){     
-                 console.log("hit "+brickP[0]);
-                 let N = brickP[1];
-                 let v = norm(ball.velocity);
-                 let I = normalize(neg(ball.velocity));
-                 let w = 2.*dot(I, N);
-                 ball.StartTime=state.time;
-                 ball.releasePosition = ball.position.slice();
-                 ball.velocity = [v*(w*N[0]-I[0]), v*(w*N[1]-I[1]), v*(w*N[2]-I[2])];
+                 console.log("hit "+brickP[0]+" at "+ball.position);
+                 changeVelocity(ball,brickP[1]);
                   const response = 
                      {
                         type: "brick",
@@ -1035,6 +1029,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
                      };
                
                  MR.syncClient.send(response);
+                 MR.bricks[brickP[0]].exist = false;
                  //MR.bricks.splice(brickP[0],1);
               }
            }
@@ -1046,7 +1041,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
            //draw the ball
             m.rotateQ(ball.orientation);
             m.scale(...ball.scale);
-            drawShape(ball.shape, [1,1,1]);
+            drawShape(ball.shape, ball.color);
          m.restore();
       }
      }
@@ -1062,7 +1057,6 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
     -----------------------------------------------------------------*/
    let drawCube = (m,color) =>{
       m.save();
-         //m.translate(x,y,z);
          m.scale(CUBE_SIZE,CUBE_SIZE,CUBE_SIZE);
          drawShape(CG.cube,[3,3,3],color,1);
       m.restore();
@@ -1071,7 +1065,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
        if(MR.bricks[n].exist){
          let pos = MR.bricks[n].position;
          m.save();
-            m.rotateY((MR.bricks[n].angle+state.time)/2);
+            m.rotateY((MR.bricks[n].angle)/2);
             m.translate(pos[0],pos[1],pos[2]);
             drawCube(m,MR.bricks[n].color);
          m.restore();

@@ -209,8 +209,8 @@ MR.syncClient.eventBus.subscribe("brick", (json) => {
      if (success) {
       console.log("brick moved: ", json);
       // update update metadata for next frame's rendering
-      let current = MR.objs[json["uid"]];
-      console.log(json);
+      //let current = MR.objs[json["uid"]];
+      //console.log(json);
       if(json["state"]["action"] == "delete"){
         MR.bricks[json["state"]["index"]].exist = false;
       }else if(json["state"]["action"] == "add"){
