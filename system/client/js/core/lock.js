@@ -1,11 +1,11 @@
 class Lock {
     constructor() {
-        this.locked = false;       
+        this.locked = false;
     }
 
     request(uid) {
         console.log("send lock");
-        const response = 
+        const response =
         {
             type: "lock",
             uid: uid,
@@ -18,7 +18,7 @@ class Lock {
     }
 
     release(uid) {
-        const response = 
+        const response =
         {
             type: "release",
             uid: uid,

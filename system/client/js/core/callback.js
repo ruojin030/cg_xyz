@@ -9,24 +9,39 @@ MR.syncClient.eventBus.subscribe("initialize", (json) => {
     if (!MR.avatars) {
         MR.avatars = {};
     }
+    if (!MR.balls) {
+        MR.balls = {};
+    }
+    if (!MR.bricks) {
+        MR.bricks = [];
+    }
 
     const id = json["id"];
 
     let headset = new Headset(CG.cylinder);
     let leftController = new Controller(CG.cube);
     let rightController = new Controller(CG.cube);
-    let playerAvatar = new Avatar(headset, id, leftController, rightController);
+    // let playerAvatar = new Avatar(headset, id, leftController, rightController);
 
     for (let key in json["avatars"]) {
         const avid = json["avatars"][key]["user"];
         let avatar = new Avatar(headset, avid, leftController, rightController);
         MR.avatars[avid] = avatar;
     }
-
-    // MR.avatars[id] = playerAvatar;
+    for (let key in json["balls"]) {
+        const avid = json["balls"][key]["id"];
+        let ball = new Ball(id);
+        MR.balls[avid] = ball;
+    }
+    for (let key in json["bricks"]) {
+        let brick = json["bricks"][key];
+        brick.lock = new Lock();
+        MR.bricks.push(brick);
+    }
     MR.playerid = id;
     console.log("player id is", id);
     console.log(MR.avatars);
+    console.log(MR.balls);
 });
 
 MR.syncClient.eventBus.subscribe("join", (json) => {
@@ -41,6 +56,8 @@ MR.syncClient.eventBus.subscribe("join", (json) => {
         let rightController = new Controller(CG.cube);
         let avatar = new Avatar(headset, id, leftController, rightController);
         MR.avatars[id] = avatar;
+        let ball = new Ball(id);
+        MR.balls[id] = ball;
     }
 
     console.log(MR.avatars);
@@ -181,7 +198,7 @@ MR.syncClient.eventBus.subscribe("spawn", (json) => {
     const success = json["success"];
 
     if (success) {
-       // console.log("object created ", json);
+        // console.log("object created ", json);
         // add to MR.objs
     } else {
         console.log("failed spawn message", json);
@@ -191,36 +208,36 @@ MR.syncClient.eventBus.subscribe("spawn", (json) => {
 
 MR.syncClient.eventBus.subscribe("object", (json) => {
     const success = json["success"];
-     if (success) {
-      console.log("object moved: ", json);
-      // update update metadata for next frame's rendering
-      let current = MR.objs[json["uid"]];
-      console.log(json);
-      current.position = [json["state"]["position"][0], json["state"]["position"][1], json["state"]["position"][2]];
-    //current.orientation = MR.objs[json["state"]["orientation"]];
+    if (success) {
+        console.log("object moved: ", json);
+        // update update metadata for next frame's rendering
+        let current = MR.objs[json["uid"]];
+        console.log(json);
+        current.position = [json["state"]["position"][0], json["state"]["position"][1], json["state"]["position"][2]];
+        //current.orientation = MR.objs[json["state"]["orientation"]];
     }
-    else{
-      console.log("failed object message", json);
+    else {
+        console.log("failed object message", json);
     }
 });
 MR.syncClient.eventBus.subscribe("brick", (json) => {
     console.log("brick moved!!!!!!");
     const success = json["success"];
-     if (success) {
-      console.log("brick moved: ", json);
-      // update update metadata for next frame's rendering
-      //let current = MR.objs[json["uid"]];
-      //console.log(json);
-      if(json["state"]["action"] == "delete"){
-        MR.bricks[json["state"]["index"]].exist = false;
-      }else if(json["state"]["action"] == "add"){
-        MR.bricks[json["state"]["index"]].exist = true;
-      }
+    if (success) {
+        console.log("brick moved: ", json);
+        // update update metadata for next frame's rendering
+        //let current = MR.objs[json["uid"]];
+        //console.log(json);
+        if (json["state"]["action"] == "delete") {
+            MR.bricks[json["state"]["index"]].exist = false;
+        } else if (json["state"]["action"] == "add") {
+            MR.bricks[json["state"]["index"]].exist = true;
+        }
 
-    //current.orientation = MR.objs[json["state"]["orientation"]];
+        //current.orientation = MR.objs[json["state"]["orientation"]];
     }
-    else{
-      console.log("failed brick message", json);
+    else {
+        console.log("failed brick message", json);
     }
 });
 
@@ -244,16 +261,14 @@ MR.syncClient.eventBus.subscribe("calibration", (json) => {
 });
 
 
-function pollAvatarData() 
-{
-    if (MR.VRIsActive()) 
-    {
+function pollAvatarData() {
+    if (MR.VRIsActive()) {
         const frameData = MR.frameData();
         if (frameData != null) {
             //User Headset
             // const leftInverseView = CG.matrixInverse(frameData.leftViewMatrix);
             // const rightInverseView = CG.matrixInverse(frameData.rightViewMatrix);
-            
+
             // const leftHeadsetPos = CG.matrixTransform(leftInverseView, frameData.pose.position);
             // const rightHeadsetPos = CG.matrixTransform(rightInverseView, frameData.pose.position);
             // const headsetPos = CG.mix(leftHeadsetPos, rightHeadsetPos);

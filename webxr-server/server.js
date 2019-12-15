@@ -49,43 +49,43 @@ const datastore = new DataStore();
 const Calibrator = require("./calibrator.js");
 
 const parser = new argparse.ArgumentParser({
-  version: "0.0.1",
-  addHelp:true,
-  description: "webxr server"
+    version: "0.0.1",
+    addHelp: true,
+    description: "webxr server"
 });
 parser.addArgument(
-  [ "-p", "--port" ],
-  {
-    help: "port to listen on",
-    defaultValue: 11235
-  }
-);
-parser.addArgument(
-    [ "-t", "--tick" ],
+    ["-p", "--port"],
     {
-      help: "interval to broadcast server time 'tick' to clients (in ms)",
-      defaultValue: 2000
+        help: "port to listen on",
+        defaultValue: 11235
     }
 );
 parser.addArgument(
-    [ "-a", "--avatar" ],
+    ["-t", "--tick"],
     {
-      help: "interval to broadcast avatars to clients (in ms)",
-      defaultValue: 10
+        help: "interval to broadcast server time 'tick' to clients (in ms)",
+        defaultValue: 2000
     }
 );
 parser.addArgument(
-    [ "-b", "--broadcast" ],
+    ["-a", "--avatar"],
     {
-      help: "interval to broadcast messages to clients (in ms)",
-      defaultValue: 1
+        help: "interval to broadcast avatars to clients (in ms)",
+        defaultValue: 10
     }
 );
 parser.addArgument(
-    [ "-hb", "--heartbeat" ],
+    ["-b", "--broadcast"],
     {
-      help: "interval to heartbeat ping pong messages to clients (in ms)",
-      defaultValue: 300
+        help: "interval to broadcast messages to clients (in ms)",
+        defaultValue: 1
+    }
+);
+parser.addArgument(
+    ["-hb", "--heartbeat"],
+    {
+        help: "interval to heartbeat ping pong messages to clients (in ms)",
+        defaultValue: 300
     }
 );
 
@@ -103,6 +103,26 @@ let messageQueue = [];
 let websocketMap = new Map();
 let timers = {};
 let avatars = {};
+let bricks = {};
+
+function Brick(color) {
+    this.color = color;
+ };
+
+let getBrickID = (i, j) => {
+    return i * 5 + j;
+}
+for (let i = 0; i < 15; i++) {
+    for (let j = 0; j < 5; j++) {
+        let brick = new Brick((i + j) % 3);
+        brick.uid = getBrickID(i, j);
+        brick.position = [0, j / 2 + 1, -5 + j / 2].slice();
+        brick.angle = i;
+        brick.exist = true;
+        console.log(brick.uid);
+        bricks[brick.uid] = brick;
+    }
+}
 
 setInterval(() => {
     //console.log("current connections:");
@@ -118,23 +138,23 @@ setInterval(() => {
 // ?vel {x,y,z}
 // ?acc {x,y,z}
 // controllerState {
-    // left:{
-        // back trigger
-        // side trigger
-        // one
-        // two
-        // stick {
-            // x,y
-        // }
-    // }
-    // right:
-    // same as above
+// left:{
+// back trigger
+// side trigger
+// one
+// two
+// stick {
+// x,y
+// }
+// }
+// right:
+// same as above
 // }
 // }
 
 
-function noop() {}
- 
+function noop() { }
+
 function heartbeat() {
     this.isAlive = true;
 }
@@ -142,16 +162,16 @@ function heartbeat() {
 function send(to, from, message) {
     if (to == "*") {
         messageQueue.push({
-                "src": from,
-                "dst": "*", 
-                "message": message
-            });
+            "src": from,
+            "dst": "*",
+            "message": message
+        });
     } else {
         messageQueue.push({
-                "src": from,
-                "dst": to,
-                "message": message
-            });
+            "src": from,
+            "dst": to,
+            "message": message
+        });
     }
 }
 
@@ -209,7 +229,7 @@ try {
                 // if (!dst.isAlive) {
                 //     return;
                 // }
-                
+
             }
         }
 
@@ -217,9 +237,9 @@ try {
     }
 
     function leave(index, username) {
-        
-        console.log("close: websocketMap.keys():", Array.from(websocketMap.keys() ));
-        
+
+        console.log("close: websocketMap.keys():", Array.from(websocketMap.keys()));
+
         if (!websocketMap.get(index)) {
             return;
         }
@@ -271,7 +291,7 @@ try {
         //     }
         // };
 
-        const payload = { "type": "initialize", "id": ws.index, "objects": datastore.state["objects"], "avatars": avatars };
+        const payload = { "type": "initialize", "id": ws.index, "objects": datastore.state["objects"], "avatars": avatars , "bricks": bricks};
         send(ws.index, -1, payload);
 
         // notify the world that a player joined, should be a separate process from initialize
@@ -286,7 +306,7 @@ try {
 
             try {
                 json = JSON.parse(data.toString());
-            } catch(err) {
+            } catch (err) {
                 // console.log(err);
                 return;
             }
@@ -296,7 +316,7 @@ try {
                 const lockid = json["lockid"];
                 const state = json["state"];
 
-                if(datastore.acquire(key, lockid)) {
+                if (datastore.acquire(key, lockid)) {
                     datastore.setObjectData(key, state);
                     // console.log(datastore.state);
 
@@ -322,25 +342,41 @@ try {
                     console.log("object in use.");
                 }
 
-            } else if(json["type"] == "brick"){
+            } else if (json["type"] == "brick") {
                 const key = json["uid"];
                 const state = json["state"];
+                const action = state["action"]
 
-                    // console.log(datastore.state);
-
-                    // tell everyone else about this update
+                if(key in bricks){
+                    if(action == "delete"){
+                        bricks[key].exist = false;
+                    }else if (action == "add"){
+                        bricks[key].exist = true;
+                    }
                     const response = {
                         "type": "brick",
                         "uid": key,
                         "state": state,
                         "success": true
                     };
-
                     send("*", -1, response);
+                } else {
+                    const response = {
+                        "type": "brick",
+                        "uid": key,
+                        "state": state,
+                        "success": false
+                    };
+                    send(ws.index, -1, response);
+                    console.log("no such brick!");
+                }
 
+                // console.log(datastore.state);
+
+                // tell everyone else about this update
 
             }
-             else if(json["type"] == "spawn") {
+            else if (json["type"] == "spawn") {
                 // This depends on the spawn logic we want to add.
                 const key = json["uid"];
                 const lockid = json["lockid"];
@@ -349,7 +385,7 @@ try {
                 if (!datastore.exists(key)) {
                     datastore.add(key);
                     datastore.setObjectData(key, state);
-                    datastore.lock(key,lockid);
+                    datastore.lock(key, lockid);
 
                     const response = {
                         "type": "spawn",
@@ -394,14 +430,14 @@ try {
                 }
 
             } else if (json["type"] == "lock") {
-          
+
                 const key = json["uid"];
                 const lockid = json["lockid"];
 
                 // if successful, broadcast success to everyone
                 if (datastore.acquire(key, lockid)) {
                     datastore.lock(key, lockid);
-                   
+
                     const response = {
                         "type": "lock",
                         "uid": key,
@@ -409,7 +445,7 @@ try {
                     };
 
                     send("*", -1, response);
-                // else respond with failure to sender only
+                    // else respond with failure to sender only
                 } else {
 
                     const response = {
@@ -421,7 +457,7 @@ try {
                     send(ws.index, -1, response);
                 }
 
-            } else if(json["type"] == "release") {
+            } else if (json["type"] == "release") {
 
                 const key = json["uid"];
                 const lockid = json["lockid"];
@@ -437,7 +473,7 @@ try {
                     };
 
                     send("*", -1, response);
-                // else respond with failure to sender only
+                    // else respond with failure to sender only
                 } else {
 
                     const response = {
@@ -449,7 +485,7 @@ try {
                     send(ws.index, -1, response);
                 }
 
-            } else if(json["type"] == "activate") {
+            } else if (json["type"] == "activate") {
 
                 const key = json["uid"];
 
@@ -478,7 +514,7 @@ try {
                     send(ws.index, -1, response);
                 }
 
-            } else if(json["type"] == "deactivate") {
+            } else if (json["type"] == "deactivate") {
 
                 const key = json["uid"];
                 // TODO:
@@ -493,7 +529,7 @@ try {
 
                 send("*", -1, response);
 
-            } else if(json["type"] == "restart") {
+            } else if (json["type"] == "restart") {
 
                 const response = {
                     "type": "clear"
@@ -550,7 +586,7 @@ try {
                         "type": "calibrate",
                         "success": false
                     };
-                    
+
                     send(ws.index, -1, response);
                 }
 
@@ -593,7 +629,7 @@ try {
             send("*", -1, response);
         }, AVATAR_RATE);
 
-   });
+    });
 } catch (err) {
-   console.log("couldn't load websocket: ", err);
+    console.log("couldn't load websocket: ", err);
 }

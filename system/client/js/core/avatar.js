@@ -10,6 +10,17 @@ class Avatar {
         this.mode = MR.UserType.browser; 
     }
 }
+const colors = [[1,0,0],[0,1,0],[0,0,1]];
+class Ball {
+  constructor(id) {
+    this.id = id;
+    this.position = [0,0,0];
+    this.orientation = [0,0,0,0];
+    this.color = colors[id];
+    this.shape = CG.sphere;
+    this.appear = false;
+  }
+}
 
 class Headset {
     constructor(verts) {
@@ -29,7 +40,7 @@ class Controller {
     this.side = new Button();
     this.x = new Button();
     this.y = new Button();
-  }  
+  }
 }
 
 class Button {
