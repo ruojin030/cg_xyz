@@ -29,6 +29,27 @@ const BALL_SIZE        = 0.02;
 const BALL_SPEED       = 3;
 const PAD_SIZE         = 0.3;
 
+/* const BOUND1                   = [1, 0, 0];
+const BOUND1_reflect_pos_norm  = [1, 0, 0];
+const BOUND1_reflect_neg_norm  = [-1, 0, 0];
+const BOUND2                   = [-1./2., 0, Math.sqrt(3)/2.];
+const BOUND2_reflect_pos_norm  = [-1./2., 0, Math.sqrt(3)/2.];
+const BOUND2_reflect_neg_norm  = [1./2., 0, -Math.sqrt(3)/2.];
+const BOUND3                   = [-1./2., 0, -Math.sqrt(3)/2.];
+const BOUND3_reflect_pos_norm  = [-1./2., 0, -Math.sqrt(3)/2.];
+const BOUND3_reflect_neg_norm  = [1./2., 0, Math.sqrt(3)/2.]; */
+
+const BOUDNS_REFLECT_NORM = 
+[[1, 0, 0], [-1, 0, 0],
+[-1./2., 0, Math.sqrt(3)/2.], [1./2., 0, -Math.sqrt(3)/2.],
+[-1./2., 0, -Math.sqrt(3)/2.],[1./2., 0, Math.sqrt(3)/2.]];
+
+const BOUNDS = [[1, 0, 0],[-1./2., 0, Math.sqrt(3)/2.],[-1./2., 0, -Math.sqrt(3)/2.]];
+
+const HALF_SIDE = [[0,0,1],[-Math.sqrt(3)/2.,0,-1/2.],[Math.sqrt(3)/2.,0,-1/2.]];
+
+
+
 let enableModeler = true;
 
 /*Example Grabble Object*/
@@ -133,8 +154,9 @@ async function onExit(state) {
    console.log("Goodbye! =)");
 }
 let isStart = false;
-let threshold = 0.04
+let threshold = 0.1;
 let isInit = false;
+let isRestart = false;
 
 async function setup(state) {
    hotReloadFile(getPath('week10.js'));
@@ -502,10 +524,10 @@ function onStartFrame(t, state) {
             m.restore();
             
             obj.scale = [BALL_SIZE, BALL_SIZE, BALL_SIZE];
-            obj.flag = true;
-            obj.flag1 = true;
-            obj.flag2 = true;
-            obj.touch = false;
+            obj.flag = true;    //detect dome
+            obj.flag1 = true;   //detect ground
+            obj.flag2 = true;   //detect inside boundary
+            obj.touch = false;  //detect pad
             obj.color = [1,1,1];
             obj.StartTime = state.time;
             //obj.velocity = RC.Velocity();
@@ -513,6 +535,21 @@ function onStartFrame(t, state) {
             isStart=true;
             isInit=false;
          }
+
+      /*
+         New function!!
+         press left button to reset the game!
+      */
+      if (input.LC.press()){
+         isRestart = true;
+      }
+
+      if(isRestart == true && input.LC.release()){
+         MR.objs.splice(0,1);
+         isStart = false;
+         MR.objs.push(new Obj(CG.sphere));
+         isRestart == false;
+      }
 
    }
 
@@ -901,7 +938,19 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
 
    /*我把你的code搞在了一起 你看看你手柄反弹能不能也用这个
       To LIN
+      Lin: FIXED. DEC 14  22:01
    */
+
+   /* let checkDis = (p, bound) =>{
+      return Math.abs(dot(p,bound));
+   } */
+
+   let disThreshold = 0.08;
+
+   let isHalfSide = (p, index) => {
+      let temp = dot(p, HALF_SIDE[index]);
+      return temp < 0;
+   }
 
    let changeVelocity = (ball,N)=>{
       let v = norm(ball.velocity);
@@ -912,17 +961,21 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       ball.velocity = [v*(w*N[0]-I[0]), v*(w*N[1]-I[1]), v*(w*N[2]-I[2])];
    }
 
-   /*TO LIN: still wrong plz fix it */
+   /*TO LIN: still wrong plz fix it 
+   LIN: FIXED. DEC 15  10:36
+   */
    let checkInsideBound = (position)=>{
-      if(Math.abs(position[0])==BALL_SIZE&&position[2]>=0){
-         return true;
-      }else if(position[0]>=0&& position[2]<=0){
-         return Math.abs(position[2]/position[0]+Math.sqrt(3))<=0.01;
-      }else if(position[0]<=0&& position[2]<=0){
-         return Math.abs(position[2]/position[0]-Math.sqrt(3))<=0.01;
+      let P = position;
+      for (let i = 0; i<3;i++){
+         let temp = dot(P , BOUNDS[i]);
+         if (Math.abs(temp) < disThreshold && isHalfSide(P, i)){
+            if (temp>0) return 2*i;
+            else return 2*i+1;
+         }
       }
-
+      return -1;
    }
+
 
    if (isStart == false&& input.LC){
       let ball = MR.objs[0];
@@ -983,11 +1036,14 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
                  console.log("change flag1")
                  ball.flag1 = true;
               }
-              /*still have error to fixED to LIN*/
-              if(checkInsideBound(ball.position)&&ball.flag2){
-                     changeVelocity(ball);
+              /*still have error to fixED to LIN
+              LIN: FIXED. DEC 15  00:19
+              */
+              let insideBound = checkInsideBound(ball.position);
+              if(insideBound!=-1 && ball.flag2){
+                     changeVelocity(ball, BOUDNS_REFLECT_NORM[insideBound]);
                      ball.flag2 = false;
-               }else if(!ball.flag2&&checkInsideBound(P)){
+               }else if(!ball.flag2&&insideBound==-1){
                      ball.flag2 = true;
                }
   
@@ -1000,15 +1056,8 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
                     let t = m.value();
                     N = neg(normalize(getOriZ(t)));
                  m.restore();
-           
-                 let v = norm(ball.velocity);
-                 let I = normalize(neg(ball.velocity));
-                 let w = 2.*dot(I, N);
-                 ball.StartTime=state.time;
-                 ball.releasePosition = ball.position.slice();
-                 ball.velocity = [v*(w*N[0]-I[0]), v*(w*N[1]-I[1]), v*(w*N[2]-I[2])];
+                 changeVelocity(ball,N);
                  ball.touch = false;
-                 console.log("touch!");
               }
               else if(Math.abs(ball.position[2]-input.RC.position()[2])>threshold){
                  ball.touch = true;
