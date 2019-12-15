@@ -10,6 +10,26 @@ Note that I measured everything in inches, and then converted to units of meters
 
 --------------------------------------------------------------------------------*/
 
+/*
+NOTE FOR ALL
+FINISH:
+砖块转起来的反弹有点奇怪 所以我没让他转先
+如果大家都在线 砖块可以同时消 但后加入的看到的是最初的
+目测这玩意的原理是 像所有client send 东西变更的请求
+并不会在server存 TO XTX
+TODO：
+TO LIN 中间bound 我还没写好 有一丝丝困难 可能逻辑错了
+我们多个player 多个手柄 球怎么存 怎么标记还是个问题
+TO XTX 看看能不能init 从MR里读（但好像每个client有自己的MR）
+或者我们游戏设计成只能三个人同时在线要不然不能玩 或者每次消掉砖块
+就update整个bricks to server
+TODO：
+整个游戏的输赢机制
+砖块的排序
+特殊砖块（完全没做）
+（我严重怀疑这周末都写不完）
+*/ 
+
 const inchesToMeters = inches => inches * 0.0254;
 const metersToInches = meters => meters / 0.0254;
 
@@ -325,9 +345,9 @@ async function setup(state) {
       brick.angle = 0;
       brick.uid = -1;
       brick.lock = new Lock();
-      //MR.bricks.push(brick);
+      //MR.bricks.push(brick); 
       //sendSpawnMessage(brick);
-      //
+      // 为了方便debug zone 删了方块（们） BY JIN
       console.log("#####Restart!");
       for(let i = 0;i<15;i++){
          for(let j = 0;j<5;j++){
@@ -403,7 +423,7 @@ function onStartFrame(t, state) {
       if (! state.calibrate) {
          m.identity();
          m.rotateY(Math.PI/2);
-         //m.translate(-2.01,.04,0);
+         //m.translate(-2.01,.04,0); 
          state.calibrate = m.value().slice();
       }
    }
@@ -503,10 +523,10 @@ function onStartFrame(t, state) {
             
             obj.scale = [BALL_SIZE, BALL_SIZE, BALL_SIZE];
             obj.flag = true;
-            obj.flag1 = true;
+            obj.flag1 = true; // 更多flag 更多精彩
             obj.flag2 = true;
             obj.touch = false;
-            obj.color = [1,1,1];
+            obj.color = [1,1,1]; 
             obj.StartTime = state.time;
             //obj.velocity = RC.Velocity();
             //console.log("objvelocity:", obj.velocity);
@@ -541,7 +561,7 @@ function onStartFrame(t, state) {
                m.identity();
                m.translate(CG.mix(LP, RP, .5));
                m.rotateY(Math.atan2(D[0], D[2]) + Math.PI/2);
-               //m.translate(-2.35,0-.72);
+               //m.translate(-2.35,0-.72); 删了它 校准位置 BY JIN
                state.avatarMatrixForward = CG.matrixInverse(m.value());
                state.avatarMatrixInverse = m.value();
             m.restore();
@@ -613,7 +633,6 @@ function onDraw(t, projMat, viewMat, state, eyeIdx) {
    m.rotateX(state.tiltAngle);
    m.rotateY(state.turnAngle);
    let P = state.position;
-   //console.log(state.position);
    m.translate(P[0],P[1],P[2]);
 
    m.save();
@@ -941,8 +960,9 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
    else if(isStart){
       for (let n = 0 ; n < MR.objs.length ; n++) {
          let ball = MR.objs[n], P = ball.position.slice(), RP = ball.releasePosition.slice();
-         console.log(ball.position);
-         P[1] = P[1]+EYE_HEIGHT;
+         //console.log(ball.position); 
+         P[1] = P[1]+EYE_HEIGHT; //矫正位置 希望多人也对 
+         // TO LIN 有个问题 在特殊的不知道啥情况的case好像矫正位置之后球会飞出去 很惨 随机bug超难搞
          m.save();
            if (ball.velocity){
               //console.log(ball.velocity);
@@ -974,6 +994,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
               else if (norm(P)<ROOM_SIZE-0.01){
                  ball.flag = true;
               }
+              //地面快乐反弹 貌似好了 BY JIN
               if(P[1] <BALL_SIZE/2 &&ball.flag1){
                   ball.flag1 = false;
                  console.log(P[1]);
@@ -1015,10 +1036,9 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
               }
   
               // if the ball hits the bricks
-              let brickP = hitBrick(ball.position);
-              
+              let brickP = hitBrick(ball.position);         
               if(brickP[0]!=-1){     
-                 console.log("hit "+brickP[0]+" at "+ball.position);
+                 //console.log("hit "+brickP[0]+" at "+ball.position);
                  changeVelocity(ball,brickP[1]);
                   const response = 
                      {
