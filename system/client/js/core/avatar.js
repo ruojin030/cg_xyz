@@ -24,8 +24,8 @@ class Ball {
     this.flag1 = true; // 更多flag 更多精彩
     this.flag2 = true;
     this.touch = false;
-    this.velocity;
-    this.StartTime;
+    this.velocity = [0,0,0];
+    this.StartTime = 0;
   }
 }
 

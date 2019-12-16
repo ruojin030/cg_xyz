@@ -922,18 +922,21 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
             if (brickP[0] != -1) {
                //console.log("hit "+brickP[0]+" at "+ball.position);
                changeVelocity(ball, brickP[1]);
-               const response =
-               {
-                  type: "brick",
-                  uid: MR.bricks[brickP[0]].uid,
-                  state: {
-                     action: "delete",
-                     index: brickP[0]
-                  },
-               };
-               MR.syncClient.send(response);
+               if (MR.bricks[brickP[0]].color == ball.id){
+                  const response =
+                  {
+                     type: "brick",
+                     uid: MR.bricks[brickP[0]].uid,
+                     state: {
+                        action: "delete",
+                        index: brickP[0]
+                     },
+                  };
+                  MR.bricks[brickP[0]].exist = false;
+                  MR.syncClient.send(response);
+               }
+
             }
-            
          }
             //draw the ball
          m.rotateQ(ball.orientation);
