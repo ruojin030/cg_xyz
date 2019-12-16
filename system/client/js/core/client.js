@@ -113,7 +113,6 @@ class Client
                                 // clearInterval(reconnectTimeout);
                                 // reconnectTimeout = setTimeout(reconnect, t);
                             }
-                            
                         }, this.t);
                         */
                         break;

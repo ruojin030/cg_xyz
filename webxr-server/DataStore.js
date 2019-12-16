@@ -19,6 +19,7 @@ class DataStore {
         // TODO: integrate with the functions to track usage stats
         // TODO: integrate optional timing profiling
         this.stats = {};
+        this.playerid = [0, 1, 2];
 
         // ttl timers for scheduled events
         this.timers = {};
@@ -52,15 +53,15 @@ class DataStore {
     //     if lock_ttl != None:
     //         if self.timers['lock'][key]:
     //             sched.cancel(self.timers['lock'][key])
-            
+
     //         self.timers['lock'][key] = sched.enter(lock_ttl, 1, self.unlock, argument=(key,))
-        
+
     //     if remove_ttl != None:
     //         if self.timers['remove'][key]:
     //             sched.cancel(self.timers['remove'][key])
-            
+
     //         self.timers['remove'][key] = sched.enter(remove_ttl, 1, self.remove, argument=(key,))
-        
+
     //     self.state[key] = value
 
     clear() {
@@ -102,7 +103,7 @@ class DataStore {
     remove(key) {
         delete this.state['objects'][key];
     }
-    
+
     // attempt to acquire lock, returns true or false
     acquire(key, lockid) {
         return this.state['objects'][key]['lockid'] === -1 || this.state['objects'][key]['lockid'] === lockid;
@@ -131,12 +132,25 @@ class DataStore {
 
     deactivate(key) {
         if (key in this.state['objects']) {
-             this.state['objects'][key]["active"] = false;
+            this.state['objects'][key]["active"] = false;
         } else {
             console.log("Fun Fact: Tried deactivating object that doesn't exist.")
         }
     }
-    
+
+    getPlayerid(){
+        if (this.playerid.length == 0) {
+            return -1;
+        } else {
+            let id = this.playerid.pop();
+            return id;
+        }
+    }
+
+    restorePlayerid(id){
+        this.playerid.push(id);
+    }
+
 }
 
 module.exports = DataStore;
