@@ -49,6 +49,27 @@ const BALL_SIZE = 0.1;
 const BALL_SPEED = 3;
 const PAD_SIZE = 0.3;
 
+/* const BOUND1                   = [1, 0, 0];
+const BOUND1_reflect_pos_norm  = [1, 0, 0];
+const BOUND1_reflect_neg_norm  = [-1, 0, 0];
+const BOUND2                   = [-1./2., 0, Math.sqrt(3)/2.];
+const BOUND2_reflect_pos_norm  = [-1./2., 0, Math.sqrt(3)/2.];
+const BOUND2_reflect_neg_norm  = [1./2., 0, -Math.sqrt(3)/2.];
+const BOUND3                   = [-1./2., 0, -Math.sqrt(3)/2.];
+const BOUND3_reflect_pos_norm  = [-1./2., 0, -Math.sqrt(3)/2.];
+const BOUND3_reflect_neg_norm  = [1./2., 0, Math.sqrt(3)/2.]; */
+
+const BOUDNS_REFLECT_NORM = 
+[[1, 0, 0], [-1, 0, 0],
+[-1./2., 0, Math.sqrt(3)/2.], [1./2., 0, -Math.sqrt(3)/2.],
+[-1./2., 0, -Math.sqrt(3)/2.],[1./2., 0, Math.sqrt(3)/2.]];
+
+const BOUNDS = [[1, 0, 0],[-1./2., 0, Math.sqrt(3)/2.],[-1./2., 0, -Math.sqrt(3)/2.]];
+
+const HALF_SIDE = [[0,0,1],[-Math.sqrt(3)/2.,0,-1/2.],[Math.sqrt(3)/2.,0,-1/2.]];
+
+
+
 let enableModeler = true;
 
 let m = new Matrix();
@@ -139,8 +160,9 @@ async function onExit(state) {
    console.log("Goodbye! =)");
 }
 let isStart = false;
-let threshold = 0.04
+let threshold = 0.1;
 let isInit = false;
+let isRestart = false;
 
 async function setup(state) {
    hotReloadFile(getPath('week10.js'));
@@ -497,6 +519,22 @@ function onStartFrame(t, state) {
          isInit = false;
       }
 
+
+      /*
+         New function!!
+         press left button to reset the game!
+      */
+      if (input.LC.press()){
+         isRestart = true;
+      }
+
+      if(isRestart == true && input.LC.release()){
+         MR.objs.splice(0,1);
+         isStart = false;
+         MR.objs.push(new Obj(CG.sphere));
+         isRestart == false;
+      }
+
    }
 
    if (input.LC) {
@@ -809,9 +847,23 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
    /*
       我把你的code搞在了一起 你看看你手柄反弹能不能也用这个
       To LIN
+      Lin: FIXED. DEC 14  22:01
    */
 
-   let changeVelocity = (ball, N) => {
+
+   /* let checkDis = (p, bound) =>{
+      return Math.abs(dot(p,bound));
+   } */
+
+   let disThreshold = 0.08;
+
+   let isHalfSide = (p, index) => {
+      let temp = dot(p, HALF_SIDE[index]);
+      return temp < 0;
+   }
+
+   let changeVelocity = (ball,N)=>{
+
       let v = norm(ball.velocity);
       let I = normalize(neg(ball.velocity));
       let w = 2. * dot(I, N);
@@ -820,18 +872,24 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       ball.velocity = [v * (w * N[0] - I[0]), v * (w * N[1] - I[1]), v * (w * N[2] - I[2])];
    }
 
-   /*TO LIN: still wrong plz fix it */
-   let checkInsideBound = (position) => {
-      if (Math.abs(position[0]) == BALL_SIZE && position[2] >= 0) {
-         return true;
-      } else if (position[0] >= 0 && position[2] <= 0) {
-         return Math.abs(position[2] / position[0] + Math.sqrt(3)) <= 0.01;
-      } else if (position[0] <= 0 && position[2] <= 0) {
-         return Math.abs(position[2] / position[0] - Math.sqrt(3)) <= 0.01;
+
+   /*TO LIN: still wrong plz fix it 
+   LIN: FIXED. DEC 15  10:36
+   */
+   let checkInsideBound = (position)=>{
+      let P = position;
+      for (let i = 0; i<3;i++){
+         let temp = dot(P , BOUNDS[i]);
+         if (Math.abs(temp) < disThreshold && isHalfSide(P, i)){
+            if (temp>0) return 2*i;
+            else return 2*i+1;
+         }
       }
+      return -1;
    }
 
-   if (isStart == false && input.LC) {
+
+   if (isStart == false&& input.LC){
       let ball = MR.balls[MR.playerid];
       let P = input.RC.position();
       m.save();
@@ -855,6 +913,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
          P[1] = P[1] + EYE_HEIGHT; //矫正位置 希望多人也对
          // TO LIN 有个问题 在特殊的不知道啥情况的case好像矫正位置之后球会飞出去 很惨 随机bug超难搞
          m.save();
+
          m.translate(RP[0], RP[1], RP[2]);
          let time = state.time - ball.StartTime;
          ball.position = [RP[0] + ball.velocity[0] * time, RP[1] + ball.velocity[1] * time, RP[2] + ball.velocity[2] * time];
@@ -942,6 +1001,93 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
          m.rotateQ(ball.orientation);
          m.scale(...ball.scale);
          drawShape(ball.shape, ball.color);
+/*
+           if (ball.velocity){
+              //console.log(ball.velocity);
+           // update ball position with time and velocity
+              m.translate(RP[0], RP[1], RP[2]);
+              let time = state.time - ball.StartTime;
+              ball.position = [RP[0]+ball.velocity[0] * time, RP[1]+ball.velocity[1] * time, RP[2]+ball.velocity[2] * time];
+              m.translate(ball.velocity[0] * time, ball.velocity[1] * time, ball.velocity[2] * time);
+  
+              // if the ball hits the boundary of the sphere scene
+              if (norm(P)> ROOM_SIZE-BALL_SIZE ){
+                  if(ball.flag){
+                     //console.log(ball.velocity);
+                     console.log("bounding")
+                    
+                     changeVelocity(ball,normalize(neg(ball.position)));
+                     ball.flag = false;
+                  }else{
+                     console.log(ball.velocity);
+                  }
+              }
+              else if (norm(P)<ROOM_SIZE-0.01){
+                 ball.flag = true;
+              }
+              //地面快乐反弹 貌似好了 BY JIN
+              if(P[1] <BALL_SIZE/2 &&ball.flag1){
+                  ball.flag1 = false;
+                 console.log(P[1]);
+                 console.log("size Change");                
+                 changeVelocity(ball,[0,1,0]);
+              }else if(P[1] >=BALL_SIZE/2&&!ball.flag1){
+                 console.log("change flag1")
+                 ball.flag1 = true;
+              }
+              
+              let insideBound = checkInsideBound(ball.position);
+              if(insideBound!=-1 && ball.flag2){
+                     changeVelocity(ball, BOUDNS_REFLECT_NORM[insideBound]);
+                     ball.flag2 = false;
+               }else if(!ball.flag2&&insideBound==-1){
+                     ball.flag2 = true;
+               }
+  
+              // if the ball hits the pad
+              if (ball.touch && isTouch(ball, input.RC)){
+                 let N;
+                 m.save();
+                    m.identity();
+                    m.rotateQ(input.RC.orientation());
+                    let t = m.value();
+                    N = neg(normalize(getOriZ(t)));
+                 m.restore();
+                 changeVelocity(ball,N);
+                 ball.touch = false;
+              }
+              else if(Math.abs(ball.position[2]-input.RC.position()[2])>threshold){
+                 ball.touch = true;
+              }
+  
+              // if the ball hits the bricks
+              let brickP = hitBrick(ball.position);         
+              if(brickP[0]!=-1){     
+                 //console.log("hit "+brickP[0]+" at "+ball.position);
+                 changeVelocity(ball,brickP[1]);
+                  const response = 
+                     {
+                        type: "brick",
+                        uid: MR.bricks[brickP[0]].uid,
+                        state: {action:"delete",
+                                 index: brickP[0]},
+                     };
+               
+                 MR.syncClient.send(response);
+                 MR.bricks[brickP[0]].exist = false;
+                 //MR.bricks.splice(brickP[0],1);
+              }
+           }
+           
+           else {
+              m.translate(P[0], P[1], P[2]);
+           }
+       
+           //draw the ball
+            m.rotateQ(ball.orientation);
+            m.scale(...ball.scale);
+            drawShape(ball.shape, ball.color);
+*/
          m.restore();
 
       }
