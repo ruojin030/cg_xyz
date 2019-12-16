@@ -45,7 +45,7 @@ const LEG_THICKNESS = inchesToMeters(2.5);
 const ROOM_SIZE = 6;
 const PLAY_AREA = 3;
 const CUBE_SIZE = 0.2;
-const BALL_SIZE = 0.1;
+const BALL_SIZE = 0.05;
 const BALL_SPEED = 3;
 const PAD_SIZE = 0.3;
 
@@ -59,18 +59,19 @@ const BOUND3                   = [-1./2., 0, -Math.sqrt(3)/2.];
 const BOUND3_reflect_pos_norm  = [-1./2., 0, -Math.sqrt(3)/2.];
 const BOUND3_reflect_neg_norm  = [1./2., 0, Math.sqrt(3)/2.]; */
 
-const BOUDNS_REFLECT_NORM = 
-[[1, 0, 0], [-1, 0, 0],
-[-1./2., 0, Math.sqrt(3)/2.], [1./2., 0, -Math.sqrt(3)/2.],
-[-1./2., 0, -Math.sqrt(3)/2.],[1./2., 0, Math.sqrt(3)/2.]];
+const BOUDNS_REFLECT_NORM =
+   [[1, 0, 0], [-1, 0, 0],
+   [-1. / 2., 0, Math.sqrt(3) / 2.], [1. / 2., 0, -Math.sqrt(3) / 2.],
+   [-1. / 2., 0, -Math.sqrt(3) / 2.], [1. / 2., 0, Math.sqrt(3) / 2.]];
 
-const BOUNDS = [[1, 0, 0],[-1./2., 0, Math.sqrt(3)/2.],[-1./2., 0, -Math.sqrt(3)/2.]];
+const BOUNDS = [[1, 0, 0], [-1. / 2., 0, Math.sqrt(3) / 2.], [-1. / 2., 0, -Math.sqrt(3) / 2.]];
 
-const HALF_SIDE = [[0,0,1],[-Math.sqrt(3)/2.,0,-1/2.],[Math.sqrt(3)/2.,0,-1/2.]];
+const HALF_SIDE = [[0, 0, 1], [-Math.sqrt(3) / 2., 0, -1 / 2.], [Math.sqrt(3) / 2., 0, -1 / 2.]];
 
 
 
 let enableModeler = true;
+let break_brick = false;
 
 let m = new Matrix();
 
@@ -196,6 +197,11 @@ async function setup(state) {
       getPath("textures/brick2.jpg"),
       getPath("textures/brick3.jpg"),
       getPath("textures/cyber1.jpg"),
+      getPath("textures/warning.png"),
+      getPath("textures/Floor_Tex/texture-Floor.png"),
+      getPath("textures/Ball_Tex/ball2_00000.jpg"),
+
+
    ]);
 
    let libSources = await MREditor.loadAndRegisterShaderLibrariesForLiveEditing(gl, "libs", [
@@ -212,12 +218,12 @@ async function setup(state) {
       if (implicitNoiseInclude) {
          let libCode = MREditor.libMap.get('pnoise');
          for (let i = 0; i < 2; i++) {
-               const stageCode = stages[i];
-               const hdrEndIdx = stageCode.indexOf(';');
-               const hdr = stageCode.substring(0, hdrEndIdx + 1);
-               output[i] = hdr + '\n#line 2 1\n' + 
-                           '#include<pnoise>\n#line ' + (hdr.split('\n').length + 1) + ' 0' + 
-                           stageCode.substring(hdrEndIdx + 1);
+            const stageCode = stages[i];
+            const hdrEndIdx = stageCode.indexOf(';');
+            const hdr = stageCode.substring(0, hdrEndIdx + 1);
+            output[i] = hdr + '\n#line 2 1\n' +
+               '#include<pnoise>\n#line ' + (hdr.split('\n').length + 1) + ' 0' +
+               stageCode.substring(hdrEndIdx + 1);
          }
       }
       MREditor.preprocessAndCreateShaderProgramFromStringsAndHandleErrors(
@@ -319,12 +325,8 @@ async function setup(state) {
    Input.initKeyEvents();
 
    // load files into a spatial audio context for playback later - the path will be needed to reference this source later
-   this.audioContext1 = new SpatialAudioContext([
-      'assets/audio/blop.wav'
-   ]);
-
-   this.audioContext2 = new SpatialAudioContext([
-      'assets/audio/peacock.wav'
+   this.audioContext = new SpatialAudioContext([
+      'assets/audio/IRsample.wav'
    ]);
 
 
@@ -524,15 +526,16 @@ function onStartFrame(t, state) {
          New function!!
          press left button to reset the game!
       */
-      if (input.LC.press()){
+      if (input.LC.press()) {
          isRestart = true;
       }
 
-      if(isRestart == true && input.LC.release()){
-         MR.objs.splice(0,1);
+      if (isRestart == true && input.LC.release()) {
          isStart = false;
-         MR.objs.push(new Obj(CG.sphere));
+         // sendBallMessage()
          isRestart == false;
+         let ball = MR.balls[MR.playerid];
+         ball.restore();
       }
 
    }
@@ -862,8 +865,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       return temp < 0;
    }
 
-   let changeVelocity = (ball,N)=>{
-
+   let changeVelocity = (ball, N) => {
       let v = norm(ball.velocity);
       let I = normalize(neg(ball.velocity));
       let w = 2. * dot(I, N);
@@ -876,20 +878,20 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
    /*TO LIN: still wrong plz fix it 
    LIN: FIXED. DEC 15  10:36
    */
-   let checkInsideBound = (position)=>{
+   let checkInsideBound = (position) => {
       let P = position;
-      for (let i = 0; i<3;i++){
-         let temp = dot(P , BOUNDS[i]);
-         if (Math.abs(temp) < disThreshold && isHalfSide(P, i)){
-            if (temp>0) return 2*i;
-            else return 2*i+1;
+      for (let i = 0; i < 3; i++) {
+         let temp = dot(P, BOUNDS[i]);
+         if (Math.abs(temp) < disThreshold && isHalfSide(P, i)) {
+            if (temp > 0) return 2 * i;
+            else return 2 * i + 1;
          }
       }
       return -1;
    }
 
 
-   if (isStart == false&& input.LC){
+   if (isStart == false && input.LC) {
       let ball = MR.balls[MR.playerid];
       let P = input.RC.position();
       m.save();
@@ -900,7 +902,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       m.translate(0, 0, 0.025);
       m.scale(BALL_SIZE, BALL_SIZE, BALL_SIZE);
 
-      drawShape(ball.shape, ball.color);
+      drawShape(ball.shape, ball.color,6);
       m.restore();
 
    }
@@ -945,10 +947,11 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
                ball.flag1 = true;
             }
             /*still have error to fixED to LIN*/
-            if (checkInsideBound(ball.position) && ball.flag2) {
-               changeVelocity(ball);
+            let insideBound = checkInsideBound(ball.position);
+            if (insideBound != -1 && ball.flag2) {
+               changeVelocity(ball, BOUDNS_REFLECT_NORM[insideBound]);
                ball.flag2 = false;
-            } else if (!ball.flag2 && checkInsideBound(P)) {
+            } else if (!ball.flag2 && insideBound == -1) {
                ball.flag2 = true;
             }
 
@@ -981,7 +984,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
             if (brickP[0] != -1) {
                //console.log("hit "+brickP[0]+" at "+ball.position);
                changeVelocity(ball, brickP[1]);
-               if (MR.bricks[brickP[0]].color == ball.id){
+               if (MR.bricks[brickP[0]].color == ball.id) {
                   const response =
                   {
                      type: "brick",
@@ -992,102 +995,16 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
                      },
                   };
                   MR.bricks[brickP[0]].exist = false;
+                  break_brick = true;
                   MR.syncClient.send(response);
                }
 
             }
          }
-            //draw the ball
+         //draw the ball
          m.rotateQ(ball.orientation);
          m.scale(...ball.scale);
-         drawShape(ball.shape, ball.color);
-/*
-           if (ball.velocity){
-              //console.log(ball.velocity);
-           // update ball position with time and velocity
-              m.translate(RP[0], RP[1], RP[2]);
-              let time = state.time - ball.StartTime;
-              ball.position = [RP[0]+ball.velocity[0] * time, RP[1]+ball.velocity[1] * time, RP[2]+ball.velocity[2] * time];
-              m.translate(ball.velocity[0] * time, ball.velocity[1] * time, ball.velocity[2] * time);
-  
-              // if the ball hits the boundary of the sphere scene
-              if (norm(P)> ROOM_SIZE-BALL_SIZE ){
-                  if(ball.flag){
-                     //console.log(ball.velocity);
-                     console.log("bounding")
-                    
-                     changeVelocity(ball,normalize(neg(ball.position)));
-                     ball.flag = false;
-                  }else{
-                     console.log(ball.velocity);
-                  }
-              }
-              else if (norm(P)<ROOM_SIZE-0.01){
-                 ball.flag = true;
-              }
-              //地面快乐反弹 貌似好了 BY JIN
-              if(P[1] <BALL_SIZE/2 &&ball.flag1){
-                  ball.flag1 = false;
-                 console.log(P[1]);
-                 console.log("size Change");                
-                 changeVelocity(ball,[0,1,0]);
-              }else if(P[1] >=BALL_SIZE/2&&!ball.flag1){
-                 console.log("change flag1")
-                 ball.flag1 = true;
-              }
-              
-              let insideBound = checkInsideBound(ball.position);
-              if(insideBound!=-1 && ball.flag2){
-                     changeVelocity(ball, BOUDNS_REFLECT_NORM[insideBound]);
-                     ball.flag2 = false;
-               }else if(!ball.flag2&&insideBound==-1){
-                     ball.flag2 = true;
-               }
-  
-              // if the ball hits the pad
-              if (ball.touch && isTouch(ball, input.RC)){
-                 let N;
-                 m.save();
-                    m.identity();
-                    m.rotateQ(input.RC.orientation());
-                    let t = m.value();
-                    N = neg(normalize(getOriZ(t)));
-                 m.restore();
-                 changeVelocity(ball,N);
-                 ball.touch = false;
-              }
-              else if(Math.abs(ball.position[2]-input.RC.position()[2])>threshold){
-                 ball.touch = true;
-              }
-  
-              // if the ball hits the bricks
-              let brickP = hitBrick(ball.position);         
-              if(brickP[0]!=-1){     
-                 //console.log("hit "+brickP[0]+" at "+ball.position);
-                 changeVelocity(ball,brickP[1]);
-                  const response = 
-                     {
-                        type: "brick",
-                        uid: MR.bricks[brickP[0]].uid,
-                        state: {action:"delete",
-                                 index: brickP[0]},
-                     };
-               
-                 MR.syncClient.send(response);
-                 MR.bricks[brickP[0]].exist = false;
-                 //MR.bricks.splice(brickP[0],1);
-              }
-           }
-           
-           else {
-              m.translate(P[0], P[1], P[2]);
-           }
-       
-           //draw the ball
-            m.rotateQ(ball.orientation);
-            m.scale(...ball.scale);
-            drawShape(ball.shape, ball.color);
-*/
+         drawShape(ball.shape, ball.color, 6);
          m.restore();
 
       }
@@ -1135,9 +1052,31 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
    drawShape(CG.sphere, [1, 1, 1], 3);
    m.restore();
    m.save();
+   m.translate(0, - PLAY_AREA /2 ,0);
    m.rotateX(Math.PI * 0.5);
    m.scale(PLAY_AREA / 2, PLAY_AREA / 2, 0.01);
-   drawShape(CG.cylinder, [1, 1, 1], 1);
+   drawShape(CG.cube, [1, 1, 1], 5);
+   m.restore();
+
+   let ratio = 2;
+   m.save();
+   m.save();
+   m.translate(0, ROOM_SIZE / ratio, -ROOM_SIZE / ratio);
+   m.scale(0.05, ROOM_SIZE / ratio, ROOM_SIZE / ratio);
+   drawShape(CG.cube, [1, 1, 1], 4);
+   m.restore();
+   m.save();
+   m.rotateY(2 * Math.PI / 3);
+   m.translate(0, ROOM_SIZE / ratio, -ROOM_SIZE / ratio);
+   m.scale(0.05, ROOM_SIZE / ratio, ROOM_SIZE / ratio);
+   drawShape(CG.cube, [1, 1, 1], 4);
+   m.restore();
+   m.save();
+   m.rotateY(-2 * Math.PI / 3);
+   m.translate(0, ROOM_SIZE / ratio, -ROOM_SIZE / ratio);
+   m.scale(0.05, ROOM_SIZE / ratio, ROOM_SIZE / ratio);
+   drawShape(CG.cube, [1, 1, 1], 4);
+   m.restore();
    m.restore();
 
    /*-----------------------------------------------------------------
@@ -1199,19 +1138,18 @@ function onEndFrame(t, state) {
       // Here is an example of updating each audio context with the most
       // recent headset position - otherwise it will not be spatialized
 
-      this.audioContext1.updateListener(input.HS.position(), input.HS.orientation());
-      this.audioContext2.updateListener(input.HS.position(), input.HS.orientation());
+      this.audioContext.updateListener(input.HS.position(), input.HS.orientation());
 
       // Here you initiate the 360 spatial audio playback from a given position,
       // in this case controller position, this can be anything,
       // i.e. a speaker, or an drum in the room.
       // You must provide the path given, when you construct the audio context.
 
-      if (input.LC && input.LC.press())
-         this.audioContext1.playFileAt('assets/audio/blop.wav', input.LC.position());
-
-      if (input.RC && input.RC.press())
-         this.audioContext2.playFileAt('assets/audio/peacock.wav', input.RC.position());
+      if (break_brick) {
+         console.log("Play break audio");
+         this.audioContext.playFileAt('assets/audio/IRsample.wav', input.HS.position());
+         break_brick = false;
+      }
    }
 
    if (input.LC) input.LC.onEndFrame();
