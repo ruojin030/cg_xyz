@@ -818,9 +818,9 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
    let hitBrick = (ballPos) => {
       for (let i = 0; i < MR.bricks.length; i++) {
          if (MR.bricks[i].exist) {
-            let b_x = Math.sin((MR.bricks[i].angle) / 2) * MR.bricks[i].position[2];
+            let b_x = Math.sin((MR.bricks[i].angle+state.time) / 2) * MR.bricks[i].position[2];
             let b_y = MR.bricks[i].position[1];
-            let b_z = Math.cos((MR.bricks[i].angle) / 2) * MR.bricks[i].position[2];
+            let b_z = Math.cos((MR.bricks[i].angle+state.time) / 2) * MR.bricks[i].position[2];
             let x = ballPos[0] - b_x;
             let y = ballPos[1] - b_y;
             let z = ballPos[2] - b_z;
@@ -1029,7 +1029,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       if (MR.bricks[n].exist) {
          let pos = MR.bricks[n].position;
          m.save();
-         m.rotateY((MR.bricks[n].angle) / 2);
+         m.rotateY((MR.bricks[n].angle+state.time) / 2);
          m.translate(pos[0], pos[1], pos[2]);
          drawCube(m, MR.bricks[n].color);
          m.restore();
