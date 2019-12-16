@@ -196,7 +196,8 @@ async function setup(state) {
       getPath("textures/brick1.jpg"),
       getPath("textures/brick2.jpg"),
       getPath("textures/brick3.jpg"),
-      getPath("textures/cyber1.jpg"),
+      //getPath("textures/cyber1.jpg"),
+      getPath("textures/Skybox/bg1.jpg"),
       getPath("textures/warning.png"),
       getPath("textures/Floor_Tex/texture-Floor.png"),
       getPath("textures/Ball_Tex/ball2_00000.jpg"),
@@ -629,12 +630,12 @@ function onDraw(t, projMat, viewMat, state, eyeIdx) {
    myDraw(t, projMat, viewMat, state, eyeIdx, false);
    m.restore();
 
-   m.save();
+   /* m.save();
    m.translate(HALL_WIDTH / 2 - TABLE_DEPTH / 2, -TABLE_HEIGHT * 1.048, TABLE_WIDTH / 6.7);
    m.rotateY(Math.PI);
    m.scale(.1392);
    myDraw(t, projMat, viewMat, state, eyeIdx, true);
-   m.restore();
+   m.restore(); */
 }
 
 function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
