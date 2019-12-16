@@ -23,14 +23,20 @@ MR.syncClient.eventBus.subscribe("initialize", (json) => {
     let rightController = new Controller(CG.cube);
     // let playerAvatar = new Avatar(headset, id, leftController, rightController);
 
+    console.log("current avatars:", json["avatars"]);
+    console.log("current balls:", json["balls"]);
     for (let key in json["avatars"]) {
         const avid = json["avatars"][key]["user"];
         let avatar = new Avatar(headset, avid, leftController, rightController);
         MR.avatars[avid] = avatar;
     }
     for (let key in json["balls"]) {
-        const avid = json["balls"][key]["id"];
-        let ball = new Ball(id);
+        const avid = json["avatars"][key]["user"];
+        let ball = new Ball(key);
+        for (var field in json["state"]){
+            var v = json["state"][field];
+            ball.setAttribute(field, v);
+        }
         MR.balls[avid] = ball;
     }
     for (let key in json["bricks"]) {
@@ -235,6 +241,40 @@ MR.syncClient.eventBus.subscribe("brick", (json) => {
         }
 
         //current.orientation = MR.objs[json["state"]["orientation"]];
+    }
+    else {
+        console.log("failed brick message", json);
+    }
+});
+MR.syncClient.eventBus.subscribe("ball", (json) => {
+    console.log("callback ball added!!!!!!", json);
+    const success = json["success"];
+    if (success) {
+        if (json["uid"] in MR.balls == false){
+            MR.balls[json["uid"]] = new Ball(json["uid"]);
+        }
+    }
+    else {
+        console.log("failed brick message", json);
+    }
+});
+MR.syncClient.eventBus.subscribe("releaseBall", (json) => {
+    const success = json["success"];
+    let key = json["uid"];
+    let state = json["state"];
+    console.log("Callback ball released!!!!!!", json);
+    if (success) {
+        console.log("Callback 2");
+        MR.balls[key].position = state["position"];
+        MR.balls[key].releasePosition = state["releasePosition"];
+        MR.balls[key].orientation = state["orientation"];
+        MR.balls[key].velocity =  state["velocity"];
+        MR.balls[key].scale =  state["scale"];
+        MR.balls[key].flag =  state["flag"];
+        MR.balls[key].flag1 =  state["flag1"];
+        MR.balls[key].flag2 =  state["flag2"];
+        MR.balls[key].touch=  state["touch"];
+        MR.balls[key].StartTime= state["StartTime"];
     }
     else {
         console.log("failed brick message", json);

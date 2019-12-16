@@ -45,7 +45,7 @@ const LEG_THICKNESS = inchesToMeters(2.5);
 const ROOM_SIZE = 6;
 const PLAY_AREA = 3;
 const CUBE_SIZE = 0.2;
-const BALL_SIZE = 0.02;
+const BALL_SIZE = 0.1;
 const BALL_SPEED = 3;
 const PAD_SIZE = 0.3;
 
@@ -339,6 +339,42 @@ function sendSpawnMessage(object) {
    MR.syncClient.send(response);
 }
 
+function sendBallMessage(ball) {
+   const response =
+   {
+      type: "ball",
+      uid: ball.id,
+      lockid: -1,
+      state: {
+         color: ball.color,
+      }
+   };
+   console.log("Send ball", response);
+   MR.syncClient.send(response);
+}
+
+function releaseBallMessage(ball) {
+   const response = {
+      type: "release ball",
+      uid: ball.id,
+      lockid: -1,
+      state: {
+         position: ball.position,
+         releasePosition: ball.releasePosition,
+         orientation: ball.orientation,
+         velocity: ball.velocity,
+         scale: ball.scale,
+         flag: ball.flag,
+         flag1: ball.flag1,
+         flag2: ball.flag2,
+         touch: ball.touch,
+         StartTime: ball.StartTime,
+      }
+   }
+   console.log("Releasing ball:", ball);
+   MR.syncClient.send(response);
+}
+
 function onStartFrame(t, state) {
 
    /*-----------------------------------------------------------------
@@ -424,7 +460,7 @@ function onStartFrame(t, state) {
    /*-----------------------------------------------------------------
 
    Below is the logic for my little toy geometric modeler example.
-   You should do something more or different for your assignment. 
+   You should do something more or different for your assignment.
    Try modifying the size or color or texture of objects. Try
    deleting objects or adding constraints to make objects align
    when you bring them together. Try adding controls to animate
@@ -435,7 +471,7 @@ function onStartFrame(t, state) {
       if (input.RC.press()) {
          isInit = true;
          let ball = MR.balls[MR.playerid];
-         ball.appear = true;
+         sendBallMessage(ball);
       }
       if (isInit == true && isStart == false && input.RC.release()) {
          let ball = MR.balls[MR.playerid];
@@ -456,6 +492,7 @@ function onStartFrame(t, state) {
          ball.flag2 = true;
          ball.touch = false;
          ball.StartTime = state.time;
+         releaseBallMessage(ball);
          isStart = true;
          isInit = false;
       }
@@ -648,7 +685,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       m.save();
       m.translate(0, 0, .025);
       m.scale(.015, .015, .01);
-      drawShape(CG.cube, [0, 0, 0]);
+      drawShape(CG.cube, color);
       m.restore();
       m.save();
       m.translate(0, 0, .035);
@@ -656,12 +693,12 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       m.save();
       m.translate(0, -.001, .035);
       m.scale(.014, .014, .042);
-      drawShape(CG.cylinder, [0, 0, 0]);
+      drawShape(CG.cylinder, color);
       m.restore();
       m.save();
       m.translate(0, -.001, .077);
       m.scale(.014, .014, .014);
-      drawShape(CG.sphere, [0, 0, 0]);
+      drawShape(CG.sphere, color);
       m.restore();
       m.restore();
       m.restore();
@@ -681,7 +718,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       m.save();
       m.translate(0, 0, .025);
       m.scale(.015, .015, .01);
-      drawShape(CG.cube, [0, 0, 0]);
+      drawShape(CG.cube, color);
       m.restore();
       m.save();
       m.translate(0, 0, .035);
@@ -689,12 +726,12 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       m.save();
       m.translate(0, -.001, .035);
       m.scale(.014, .014, .042);
-      drawShape(CG.cylinder, [0, 0, 0]);
+      drawShape(CG.cylinder, color);
       m.restore();
       m.save();
       m.translate(0, -.001, .077);
       m.scale(.014, .014, .014);
-      drawShape(CG.sphere, [0, 0, 0]);
+      drawShape(CG.sphere, color);
       m.restore();
       m.restore();
       m.restore();
@@ -710,8 +747,8 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       m.rotateY(-state.turnAngle);
       m.rotateX(-state.tiltAngle);
 
-      drawController(input.LC, 0, [1, 0, 0]);
-      drawController(input.RC, 1, [0, 0, 1]);
+      // drawController(input.LC, 0, );
+      drawController(input.RC, 1, colors[MR.playerid]);
       if (enableModeler && input.RC.isDown())
          //showMenu(input.RC.position());
          m.restore();
@@ -792,24 +829,21 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
       } else if (position[0] <= 0 && position[2] <= 0) {
          return Math.abs(position[2] / position[0] - Math.sqrt(3)) <= 0.01;
       }
-
    }
 
    if (isStart == false && input.LC) {
       let ball = MR.balls[MR.playerid];
-      if(ball.appear){
-         let P = input.RC.position();
-         m.save();
-         m.identity();
-         m.translate(P[0], P[1], P[2]);
-         m.rotateQ(input.RC.orientation());
-         m.translate(0, 0, -.03);
-         m.translate(0, 0, 0.025);
-         m.scale(BALL_SIZE, BALL_SIZE, BALL_SIZE);
+      let P = input.RC.position();
+      m.save();
+      m.identity();
+      m.translate(P[0], P[1], P[2]);
+      m.rotateQ(input.RC.orientation());
+      m.translate(0, 0, -.03);
+      m.translate(0, 0, 0.025);
+      m.scale(BALL_SIZE, BALL_SIZE, BALL_SIZE);
 
-         drawShape(ball.shape, ball.color);
-         m.restore();
-      }
+      drawShape(ball.shape, ball.color);
+      m.restore();
 
    }
    else if (isStart) {
@@ -821,13 +855,13 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
          P[1] = P[1] + EYE_HEIGHT; //矫正位置 希望多人也对
          // TO LIN 有个问题 在特殊的不知道啥情况的case好像矫正位置之后球会飞出去 很惨 随机bug超难搞
          m.save();
-         if (ball.velocity) {
+         m.translate(RP[0], RP[1], RP[2]);
+         let time = state.time - ball.StartTime;
+         ball.position = [RP[0] + ball.velocity[0] * time, RP[1] + ball.velocity[1] * time, RP[2] + ball.velocity[2] * time];
+         m.translate(ball.velocity[0] * time, ball.velocity[1] * time, ball.velocity[2] * time);
+         if (n == MR.playerid) {
             //console.log(ball.velocity);
             // update ball position with time and velocity
-            m.translate(RP[0], RP[1], RP[2]);
-            let time = state.time - ball.StartTime;
-            ball.position = [RP[0] + ball.velocity[0] * time, RP[1] + ball.velocity[1] * time, RP[2] + ball.velocity[2] * time];
-            m.translate(ball.velocity[0] * time, ball.velocity[1] * time, ball.velocity[2] * time);
 
             // if the ball hits the boundary of the sphere scene
             if (norm(P) > ROOM_SIZE - BALL_SIZE) {
@@ -876,6 +910,7 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
                ball.releasePosition = ball.position.slice();
                ball.velocity = [v * (w * N[0] - I[0]), v * (w * N[1] - I[1]), v * (w * N[2] - I[2])];
                ball.touch = false;
+               releaseBallMessage(ball);
                console.log("touch!");
             }
             else if (Math.abs(ball.position[2] - input.RC.position()[2]) > threshold) {
@@ -898,17 +933,14 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
                };
                MR.syncClient.send(response);
             }
+            
          }
-         else {
-            m.translate(P[0], P[1], P[2]);
-         }
-
-         //draw the ball
+            //draw the ball
          m.rotateQ(ball.orientation);
          m.scale(...ball.scale);
-         console.log(ball);
          drawShape(ball.shape, ball.color);
          m.restore();
+
       }
    }
 
@@ -994,8 +1026,8 @@ function myDraw(t, projMat, viewMat, state, eyeIdx, isMiniature) {
          let rpos = rcontroller.position.slice();
          rpos[1] += EYE_HEIGHT;
 
-         drawSyncController(rpos, rcontroller.orientation, [1, 0, 0]);
-         drawSyncController(lpos, lcontroller.orientation, [0, 1, 1]);
+         drawSyncController(rpos, rcontroller.orientation, colors[id]);
+         // drawSyncController(lpos, lcontroller.orientation, [0, 1, 1]);
       }
    }
 }

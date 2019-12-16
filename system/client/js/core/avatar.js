@@ -1,5 +1,5 @@
 'use strict';
-
+const BALL_SIZE = 0.1;
 class Avatar {
     constructor(head, id, leftController, rightController){
         this.playerid = id;
@@ -7,7 +7,7 @@ class Avatar {
         this.leftController = leftController;
         this.rightController = rightController;
         //TODO: Do we really want this to be the default?
-        this.mode = MR.UserType.browser; 
+        this.mode = MR.UserType.browser;
     }
 }
 const colors = [[1,0,0],[0,1,0],[0,0,1]];
@@ -16,9 +16,16 @@ class Ball {
     this.id = id;
     this.position = [0,0,0];
     this.orientation = [0,0,0,0];
+    this.releasePosition = [0,0,0];
     this.color = colors[id];
     this.shape = CG.sphere;
-    this.appear = false;
+    this.scale = [BALL_SIZE, BALL_SIZE, BALL_SIZE];
+    this.flag = true;
+    this.flag1 = true; // 更多flag 更多精彩
+    this.flag2 = true;
+    this.touch = false;
+    this.velocity;
+    this.StartTime;
   }
 }
 

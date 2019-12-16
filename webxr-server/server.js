@@ -104,10 +104,11 @@ let websocketMap = new Map();
 let timers = {};
 let avatars = {};
 let bricks = {};
+let balls = {};
 
 function Brick(color) {
     this.color = color;
- };
+};
 
 let getBrickID = (i, j) => {
     return i * 5 + j;
@@ -245,6 +246,8 @@ try {
         }
 
         delete avatars[index];
+        delete balls[index];
+        datastore.restorePlayerid(index);
         console.log(avatars);
         // clearInterval(timerID);
         // TODO: change ip to username
@@ -256,7 +259,6 @@ try {
     }
 
     // TODO: map wsIndex to user - i.e. there can be multiple sockets per user
-    let wsIndex = 0;
 
     // int to string
     let index2userid = {};
@@ -274,7 +276,11 @@ try {
 
         let timerID = null;
 
-        ws.index = wsIndex++;
+        // ws.index = wsIndex++;
+        ws.index = datastore.getPlayerid();
+        if (ws.index == -1){
+            throw "enough player";
+        }
         websocketMap.set(ws.index, ws);
 
         ws.isAlive = true;
@@ -282,16 +288,14 @@ try {
 
         console.log("connection: ", ip);
 
-        // avatars[ws.index] =
-        // {
-        //     'user': ws.index,
-        //     'state': {
-        //         'pos': [ 0, 0, 0 ],
-        //         'rot': [ 0, 0, 0 ]
-        //     }
-        // };
-
-        const payload = { "type": "initialize", "id": ws.index, "objects": datastore.state["objects"], "avatars": avatars , "bricks": bricks};
+        const payload = {
+            "type": "initialize",
+            "id": ws.index,
+            "objects": datastore.state["objects"],
+            "avatars": avatars,
+            "bricks": bricks,
+            "balls": balls
+        };
         send(ws.index, -1, payload);
 
         // notify the world that a player joined, should be a separate process from initialize
@@ -342,15 +346,25 @@ try {
                     console.log("object in use.");
                 }
 
+            } else if (json["type"] == "ball") {
+                const key = json["uid"];
+                console.log("Add new ball:", json);
+                balls[key] = json["state"];
+                const response = {
+                    "type": "ball",
+                    "uid": key,
+                    "success": true
+                };
+                send("*", -1, response);
             } else if (json["type"] == "brick") {
                 const key = json["uid"];
                 const state = json["state"];
                 const action = state["action"]
 
-                if(key in bricks){
-                    if(action == "delete"){
+                if (key in bricks) {
+                    if (action == "delete") {
                         bricks[key].exist = false;
-                    }else if (action == "add"){
+                    } else if (action == "add") {
                         bricks[key].exist = true;
                     }
                     const response = {
@@ -457,6 +471,31 @@ try {
                     send(ws.index, -1, response);
                 }
 
+            } else if (json["type"] == "release ball"){
+                const key = json["uid"];
+                const lockid = json["lockid"];
+                const state = json["state"];
+                console.log("release ball message", json);
+
+                let ball = balls[key];
+                ball.position = state["position"];
+                ball.releasePosition = state["releasePosition"];
+                ball.orientation = state["orientation"];
+                ball.velocity =  state["velocity"];
+                ball.scale =  state["scale"];
+                ball.flag =  state["flag"];
+                ball.flag1 =  state["flag1"];
+                ball.flag2 =  state["flag2"];
+                ball.touch=  state["touch"];
+                ball.StartTime= state["StartTime"];
+
+                const response = {
+                    "type": "releaseBall",
+                    "uid": key,
+                    "state": state,
+                    "success": true
+                }
+                send("*", -1, response);
             } else if (json["type"] == "release") {
 
                 const key = json["uid"];
